@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: plano
+      POSTGRES_DB: plano
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env (see .env.example)}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Local only: the server tests use it. 5432 is often taken on dev machines.
+    ports:
+      - "127.0.0.1:5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plano -d plano"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/plano
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_ENV: ${APP_ENV:-production}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      APPLE_SERVICES_ID: ${APPLE_SERVICES_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Reachable from this machine only until a reverse proxy with TLS exists.
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  postgres-data:

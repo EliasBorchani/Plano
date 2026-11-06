@@ -1,0 +1,23 @@
+# Gradle / Kotlin
+.gradle/
+build/
+.kotlin/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Secrets and personal settings
+.env
+.envrc
+local.properties
+
+# Editors and systems
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log
+scripts/.baseline/
