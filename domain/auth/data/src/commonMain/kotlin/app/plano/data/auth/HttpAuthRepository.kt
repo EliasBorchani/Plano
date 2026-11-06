@@ -8,6 +8,7 @@ import app.plano.domain.auth.model.Session
 import app.plano.domain.auth.model.User
 import app.plano.domain.auth.repository.AuthRepository
 import app.plano.utilities.kotlinext.AppError
+import app.plano.utilities.network.SessionEvents
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -17,12 +18,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** The session itself is an httpOnly cookie set by the server: this class never sees a token after sign-in. */
+/**
+ * Tokens are httpOnly cookies set by the server: this class never sees one. The HTTP client refreshes them on
+ * its own and reports through [sessionEvents] when it no longer can.
+ */
 class HttpAuthRepository(
     private val client: HttpClient,
+    sessionEvents: SessionEvents,
 ) : AuthRepository {
     private val _session = MutableStateFlow<Session>(Session.Unknown)
     override val session: StateFlow<Session> = _session.asStateFlow()
+
+    init {
+        sessionEvents.onExpired { _session.value = Session.SignedOut }
+    }
 
     override suspend fun restore() {
         _session.value = try {

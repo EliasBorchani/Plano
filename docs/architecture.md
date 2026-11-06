@@ -21,14 +21,15 @@ shapes, plus a web umbrella and a server that share the rules.
 ```
 utilities/
   kotlin-ext/       AppError: the one failure type that reaches view models
-  network/          Ktor client factory (Js engine in the browser, CIO on the JVM), maps HTTP errors to AppError
+  network/          Ktor client factory (Js engine in the browser, CIO on the JVM), maps HTTP errors to AppError,
+                    refreshes tokens on a 401 and retries once (TokenRefresh, SessionEvents)
   presentation/     BaseViewModel (MVI), on the JetBrains lifecycle-viewmodel fork
 
 contract/           @Serializable DTOs + Routes; enum fields as names (strings), so no domain type leaks in
 
 domain/
   auth/   api/      User, AuthProvider, Session, AuthRepository
-          data/     HttpAuthRepository (session = server cookie), authDataModule
+          data/     HttpAuthRepository (tokens = httpOnly cookies), authDataModule
   events/ api/      EventType (27), Role, Event, NewEvent + validate(), EventRepository
           data/     HttpEventRepository (in-memory cache + refresh), eventsDataModule
   polls/  api/      VoteChoice, DatePoll, PollTally (pure), PollRepository

@@ -12,6 +12,19 @@ data class SignInRequest(
     val displayName: String? = null,
 )
 
+/** Native clients only: the web never sees tokens, they stay in httpOnly cookies. */
+@Serializable
+data class RefreshRequest(
+    val refreshToken: String,
+)
+
+@Serializable
+data class TokenPairDto(
+    val accessToken: String,
+    val refreshToken: String,
+    val accessExpiresInSeconds: Int,
+)
+
 @Serializable
 data class UserDto(
     val id: String,

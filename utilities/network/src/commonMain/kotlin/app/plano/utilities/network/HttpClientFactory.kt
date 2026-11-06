@@ -16,6 +16,8 @@ import kotlinx.serialization.json.Json
 data class NetworkConfig(
     /** Absolute, ending with `/` (e.g. `https://plano.app/api/`). */
     val baseUrl: String,
+    /** Null: no automatic refresh (tests of a single repository). */
+    val refresh: RefreshConfig? = null,
 )
 
 val PlanoJson = Json {
@@ -28,6 +30,7 @@ expect fun httpClientEngine(): HttpClientEngine
 fun createHttpClient(
     config: NetworkConfig,
     engine: HttpClientEngine = httpClientEngine(),
+    sessionEvents: SessionEvents = SessionEvents(),
     extraConfig: HttpClientConfig<*>.() -> Unit = {},
 ): HttpClient = HttpClient(engine) {
     install(ContentNegotiation) {
@@ -41,6 +44,8 @@ fun createHttpClient(
             }
         }
     }
+
+    config.refresh?.let { install(tokenRefreshPlugin(config.baseUrl, it, sessionEvents)) }
 
     defaultRequest {
         url(config.baseUrl)

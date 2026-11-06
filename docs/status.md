@@ -3,10 +3,21 @@
 For a new session: read `AGENTS.md` (root) first, then the `AGENTS.md` of the folder you work in. This file holds
 what they do not: where the project stands, decisions taken along the way, known limits and next steps.
 
-## Where we are (2026-11-05)
+## Where we are (2026-11-06)
 
-PRD step 1, the KMP-to-JS slice: **written and tested, not reviewed by the owner yet. Nothing is committed** (the
-folder is a git repository with no commit; the owner reviews first).
+PRD step 1, the KMP-to-JS slice: committed and pushed (`main`). Since then, **access and refresh tokens**
+(not reviewed or committed yet), asked by the owner before guest voting.
+
+- Server: `AccessTokens` (15 min JWT), `RefreshTokens` (rotation, 30 s grace, reuse revokes the family), tested
+  with a fake clock in `TokenTest` (10). Details in `server/AGENTS.md`.
+- Client: `utilities/network/TokenRefresh.kt` refreshes on a 401 and retries once; parallel 401s share one
+  refresh; a failed refresh calls `SessionEvents.onExpired`, and `HttpAuthRepository` goes `SignedOut`.
+  Tests: `TokenRefreshTest` (5), `HttpAuthRepositoryTest` (1), on JVM and Node.
+- Checked in Chrome with `ACCESS_TTL=20s`: after 25 s, adding a date gave 401 → refresh 204 → retry 200; after
+  revoking the refresh tokens in the database, a vote gave 401 → refresh 401 → back to the sign-in screen.
+- Bundle: Kotlin cost 285 KB gzip (283 before).
+
+Step 1 itself:
 
 - Shared layer (`utilities`, `contract`, `domain/{auth,events,polls}`, `features/{signin,events,event}`): JVM and JS
   targets. Tests: `PollTally` (5), `HttpPollRepository` with a mock engine (1), `EventViewModel` (4),
@@ -40,7 +51,11 @@ folder is a git repository with no commit; the owner reviews first).
   One badge when both agree. Code: `domain/polls/api/.../PollTally.kt`.
 - Joining: in the slice, anyone signed in who opens `/e/<id>` joins as planner (friend-group default). Invitations,
   groups and guests (vote with a name only) come with the data model step.
-- Session: opaque token in an httpOnly cookie, 30 days, no refresh. Same origin (`/api` proxy in dev).
+- Sessions: short access token + rotating refresh token, both in httpOnly cookies on the web (owner, 2026-11-06,
+  replaces the single 30-day session token). Same origin (`/api` proxy in dev, `PUBLIC_API_PATH` for the cookie
+  path). Logout cannot cancel an access token: it stays valid up to 15 min (accepted by the owner,
+  standard practice per RFC 9700). If needed later: an in-memory deny list of revoked families (one instance) or
+  a per-request family check in the database.
 - Postgres on host port **5434** (5433 is used by dnd-tools' Postgres on this machine).
 - Vote choices are shown in enum order: « Oui », « Si majorité », « Non ».
 - Share button: keeps the ready-made message with the event name (owner: the whole front will be redone with the
@@ -50,7 +65,6 @@ folder is a git repository with no commit; the owner reviews first).
 
 ## Known limits
 
-- A 401 on any call other than `/me` does not flip the session to signed out; the screen shows an error instead.
 - Repository caches are in memory and not cleared on sign-out (each screen refreshes when it opens).
 - No realtime: another person's vote shows after a reload or one's own next action.
 - No deadline, validation of the winning date, RSVP, notifications, place poll, guests, groups.
@@ -58,8 +72,9 @@ folder is a git repository with no commit; the owner reviews first).
 
 ## Next steps
 
-1. Owner review of this slice; then the first commit. Git is configured like dnd-tools (personal SSH key, author);
-   remote `git@github.com:EliasBorchani/Plano.git`, `main` tracks it.
-2. Guest voting with a name only (PRD decision): the dev Apple stand-in is not it; it is off in production.
+1. Owner review of the token change; then a commit.
+2. Guest voting with a name only (PRD decision): a guest is an `app_user` without `auth_identity`, with the same
+   tokens; Google/Apple sign-in after the first vote merges the guest into the account. The dev Apple stand-in is
+   not it; it is off in production.
 3. Google client ID: the owner wants to be guided through it when it matters (first deployment).
 4. PRD step 3, the link library in shared Kotlin (a new context in `domain/`).

@@ -4,6 +4,10 @@ package app.plano.contract
 object Routes {
     const val ME = "me"
     const val LOGOUT = "auth/logout"
+    const val REFRESH = "auth/refresh"
+
+    /** Auth routes never trigger a refresh-and-retry in the client. */
+    const val AUTH_PREFIX = "auth/"
     const val EVENTS = "events"
 
     fun signIn(provider: String) = "auth/$provider"

@@ -5,5 +5,5 @@ import app.plano.domain.auth.repository.AuthRepository
 import org.koin.dsl.module
 
 val authDataModule = module {
-    single<AuthRepository> { HttpAuthRepository(get()) }
+    single<AuthRepository> { HttpAuthRepository(get(), get()) }
 }

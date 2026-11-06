@@ -9,7 +9,7 @@ import app.plano.contract.VoteRequest
 import app.plano.domain.polls.model.VoteChoice
 import app.plano.server.ApiError
 import app.plano.server.Db
-import app.plano.server.auth.Sessions
+import app.plano.server.auth.Auth
 import app.plano.server.auth.requireUser
 import app.plano.server.events.requireRole
 import app.plano.server.forbidden
@@ -44,32 +44,32 @@ private fun Connection.loadPoll(pollId: UUID): DatePollDto = DatePollDto(
     ) { VoteDto(optionId = it.getString(1), userId = it.getString(2), choice = it.getString(3)) },
 )
 
-fun Route.pollRoutes(db: Db, sessions: Sessions) {
+fun Route.pollRoutes(db: Db, auth: Auth) {
     get(Routes.poll("{eventId}")) {
-        val user = call.requireUser(sessions)
+        val user = call.requireUser(auth)
         val eventId = call.parameters["eventId"].toUuidOr404()
         val poll = db.tx {
-            requireRole(eventId, user.id)
+            requireRole(eventId, user.userId)
             loadPoll(datePollId(eventId))
         }
         call.respond(poll)
     }
 
     post(Routes.pollOptions("{eventId}")) {
-        val user = call.requireUser(sessions)
+        val user = call.requireUser(auth)
         val eventId = call.parameters["eventId"].toUuidOr404()
         val body = call.receive<AddDateOptionRequest>()
         val date = runCatching { LocalDate.parse(body.date) }.getOrNull() ?: invalid("DATE_INVALID")
         // A day of slack: the client checks against its own time zone, which may be ahead of UTC.
         if (date < LocalDate.now(ZoneOffset.UTC).minusDays(1)) invalid("DATE_IN_PAST")
         val poll = db.tx {
-            if (!requireRole(eventId, user.id).canPlan) forbidden()
+            if (!requireRole(eventId, user.userId).canPlan) forbidden()
             val pollId = datePollId(eventId)
             val added = update(
                 "insert into poll_option (poll_id, date, created_by) values (?, ?, ?) on conflict do nothing",
                 pollId,
                 date,
-                user.id,
+                user.userId,
             )
             if (added == 0) throw ApiError(HttpStatusCode.Conflict, "DATE_ALREADY_OFFERED")
             loadPoll(pollId)
@@ -78,23 +78,23 @@ fun Route.pollRoutes(db: Db, sessions: Sessions) {
     }
 
     put(Routes.vote("{eventId}", "{optionId}")) {
-        val user = call.requireUser(sessions)
+        val user = call.requireUser(auth)
         val eventId = call.parameters["eventId"].toUuidOr404()
         val optionId = call.parameters["optionId"].toUuidOr404()
         val body = call.receive<VoteRequest>()
         val choice = body.choice?.let { VoteChoice.fromName(it) ?: invalid("choice_unknown") }
         val poll = db.tx {
-            requireRole(eventId, user.id)
+            requireRole(eventId, user.userId)
             val pollId = datePollId(eventId)
             if (query("select 1 from poll_option where id = ? and poll_id = ?", optionId, pollId) { 1 }.isEmpty()) notFound()
             if (choice == null) {
-                update("delete from vote where option_id = ? and user_id = ?", optionId, user.id)
+                update("delete from vote where option_id = ? and user_id = ?", optionId, user.userId)
             } else {
                 update(
                     "insert into vote (option_id, user_id, choice) values (?, ?, ?) " +
                         "on conflict (option_id, user_id) do update set choice = excluded.choice, updated_at = now()",
                     optionId,
-                    user.id,
+                    user.userId,
                     choice.name,
                 )
             }

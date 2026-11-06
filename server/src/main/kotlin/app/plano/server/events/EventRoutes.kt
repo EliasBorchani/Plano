@@ -10,7 +10,7 @@ import app.plano.domain.events.model.EventType
 import app.plano.domain.events.model.NewEvent
 import app.plano.domain.events.model.Role
 import app.plano.server.Db
-import app.plano.server.auth.Sessions
+import app.plano.server.auth.Auth
 import app.plano.server.auth.requireUser
 import app.plano.server.invalid
 import app.plano.server.notFound
@@ -32,21 +32,21 @@ fun Connection.requireRole(eventId: UUID, userId: UUID): Role =
         Role.fromName(it.getString(1))
     }.firstOrNull() ?: notFound()
 
-fun Route.eventRoutes(db: Db, sessions: Sessions) {
+fun Route.eventRoutes(db: Db, auth: Auth) {
     get(Routes.EVENTS) {
-        val user = call.requireUser(sessions)
+        val user = call.requireUser(auth)
         val events = db.tx {
             query(
                 "select e.id, e.title, e.type, m.role from event_member m join event e on e.id = m.event_id " +
                     "where m.user_id = ? order by e.created_at desc",
-                user.id,
+                user.userId,
             ) { EventSummaryDto(it.getString(1), it.getString(2), it.getString(3), it.getString(4)) }
         }
         call.respond(events)
     }
 
     post(Routes.EVENTS) {
-        val user = call.requireUser(sessions)
+        val user = call.requireUser(auth)
         val body = call.receive<CreateEventRequest>()
         val type = EventType.fromName(body.type) ?: invalid("type_unknown")
         // Same rules as the clients run before submitting.
@@ -59,9 +59,9 @@ fun Route.eventRoutes(db: Db, sessions: Sessions) {
                 event.title,
                 event.type.name,
                 event.description,
-                user.id,
+                user.userId,
             ) { it.getObject(1, UUID::class.java) }.single()
-            update("insert into event_member (event_id, user_id, role) values (?, ?, ?)", id, user.id, Role.OWNER.name)
+            update("insert into event_member (event_id, user_id, role) values (?, ?, ?)", id, user.userId, Role.OWNER.name)
             update("insert into poll (event_id, kind) values (?, 'DATE')", id)
             id
         }
@@ -69,10 +69,10 @@ fun Route.eventRoutes(db: Db, sessions: Sessions) {
     }
 
     get(Routes.event("{eventId}")) {
-        val user = call.requireUser(sessions)
+        val user = call.requireUser(auth)
         val eventId = call.parameters["eventId"].toUuidOr404()
         val dto = db.tx {
-            val role = requireRole(eventId, user.id)
+            val role = requireRole(eventId, user.userId)
             val members = query(
                 "select u.id, u.display_name, m.role from event_member m join app_user u on u.id = m.user_id " +
                     "where m.event_id = ? order by m.joined_at",
@@ -94,14 +94,14 @@ fun Route.eventRoutes(db: Db, sessions: Sessions) {
 
     // Slice rule: anyone signed in who has the link can join. Invitations come later.
     post(Routes.join("{eventId}")) {
-        val user = call.requireUser(sessions)
+        val user = call.requireUser(auth)
         val eventId = call.parameters["eventId"].toUuidOr404()
         db.tx {
             if (query("select 1 from event where id = ?", eventId) { 1 }.isEmpty()) notFound()
             update(
                 "insert into event_member (event_id, user_id, role) values (?, ?, ?) on conflict do nothing",
                 eventId,
-                user.id,
+                user.userId,
                 Role.DEFAULT_FOR_NEW_MEMBER.name,
             )
         }

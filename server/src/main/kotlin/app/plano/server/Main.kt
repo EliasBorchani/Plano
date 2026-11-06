@@ -1,10 +1,13 @@
 package app.plano.server
 
 import app.plano.domain.auth.model.AuthProvider
+import app.plano.server.auth.AccessTokens
+import app.plano.server.auth.Auth
 import app.plano.server.auth.DevAppleVerifier
 import app.plano.server.auth.IdTokenVerifier
 import app.plano.server.auth.JwksIdTokenVerifier
-import app.plano.server.auth.Sessions
+import app.plano.server.auth.RefreshTokens
+import app.plano.server.auth.Users
 import app.plano.server.auth.authRoutes
 import app.plano.server.events.eventRoutes
 import app.plano.server.polls.pollRoutes
@@ -18,15 +21,30 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import java.security.SecureRandom
+import java.time.Clock
+import java.time.Duration
 
 private val log = LoggerFactory.getLogger("app.plano.server")
 
 class Deps(
     val db: Db,
-    val verifiers: Map<AuthProvider, IdTokenVerifier>,
-    val cookieSecure: Boolean,
+    verifiers: Map<AuthProvider, IdTokenVerifier>,
+    cookieSecure: Boolean,
+    jwtSecret: ByteArray,
+    accessTtl: Duration = Duration.ofMinutes(15),
+    refreshTtl: Duration = Duration.ofDays(30),
+    publicApiPath: String = "/api",
+    clock: Clock = Clock.systemUTC(),
 ) {
-    val sessions = Sessions(db)
+    val auth = Auth(
+        users = Users(db),
+        accessTokens = AccessTokens(jwtSecret, accessTtl, clock),
+        refreshTokens = RefreshTokens(db, refreshTtl, clock),
+        verifiers = verifiers,
+        cookieSecure = cookieSecure,
+        publicApiPath = publicApiPath,
+    )
 }
 
 fun verifiersFor(config: Config): Map<AuthProvider, IdTokenVerifier> = buildMap {
@@ -44,9 +62,9 @@ fun Application.plano(deps: Deps) {
     install(CallLogging)
     installErrors()
     routing {
-        authRoutes(deps.sessions, deps.verifiers, deps.cookieSecure)
-        eventRoutes(deps.db, deps.sessions)
-        pollRoutes(deps.db, deps.sessions)
+        authRoutes(deps.auth)
+        eventRoutes(deps.db, deps.auth)
+        pollRoutes(deps.db, deps.auth)
     }
 }
 
@@ -58,6 +76,14 @@ fun main() {
         db = Db.connect(config.databaseUrl, config.databaseUser, config.databasePassword),
         verifiers = verifiers,
         cookieSecure = config.cookieSecure,
+        jwtSecret = config.jwtSecret ?: run {
+            // Dev only: access tokens die with the process, and the client refreshes them on the next call.
+            log.warn("JWT_SECRET not set: using a random one for this run")
+            ByteArray(32).also(SecureRandom()::nextBytes)
+        },
+        accessTtl = config.accessTtl,
+        refreshTtl = config.refreshTtl,
+        publicApiPath = config.publicApiPath,
     )
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") { plano(deps) }.start(wait = true)
 }

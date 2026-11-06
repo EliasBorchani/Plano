@@ -9,7 +9,7 @@ Status: step 1 of the PRD, a thin slice to test the stack (sign-in, create an ev
 
 ```
 apps/web (React) ── imports ── plano-shared (Kotlin compiled to JS: view models, rules, Ktor client)
-                                     │  HTTPS, session cookie
+                                     │  HTTPS, token cookies
                                      ▼
                               server (Ktor, JVM) ── PostgreSQL
                                      │

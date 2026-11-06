@@ -10,6 +10,9 @@ kotlin {
             implementation(libs.ktor.client.contentneg)
             implementation(libs.ktor.serialization.json)
         }
+        commonTest.dependencies {
+            implementation(libs.ktor.client.mock)
+        }
         jsMain.dependencies {
             implementation(libs.ktor.client.js)
         }

@@ -2,21 +2,14 @@ package app.plano.server
 
 import app.plano.contract.AddDateOptionRequest
 import app.plano.contract.CreateEventRequest
-import app.plano.contract.CreatedDto
 import app.plano.contract.DatePollDto
 import app.plano.contract.EventDto
 import app.plano.contract.EventSummaryDto
 import app.plano.contract.SignInRequest
 import app.plano.contract.UserDto
 import app.plano.contract.VoteRequest
-import app.plano.domain.auth.model.AuthProvider
-import app.plano.server.auth.DevAppleVerifier
-import app.plano.server.auth.IdTokenVerifier
-import app.plano.server.auth.VerifiedIdentity
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -24,49 +17,11 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ApiTest {
-    // Stands in for Google: the token is the subject.
-    private val fakeGoogle = IdTokenVerifier { VerifiedIdentity(subject = it, email = "$it@example.com", name = it.replaceFirstChar(Char::uppercase)) }
-
-    private fun api(block: suspend ApplicationTestBuilder.() -> Unit) = TestDatabase().use { database ->
-        testApplication {
-            application {
-                plano(
-                    Deps(
-                        db = database.db,
-                        verifiers = mapOf(AuthProvider.GOOGLE to fakeGoogle, AuthProvider.APPLE to DevAppleVerifier),
-                        cookieSecure = false,
-                    ),
-                )
-            }
-            block()
-        }
-    }
-
-    private fun ApplicationTestBuilder.user(): HttpClient = createClient {
-        install(HttpCookies)
-        install(ContentNegotiation) { json() }
-    }
-
-    private suspend fun HttpClient.signIn(provider: String, token: String): UserDto =
-        post("/auth/$provider") {
-            contentType(ContentType.Application.Json)
-            setBody(SignInRequest(idToken = token))
-        }.body()
-
-    private suspend fun HttpClient.createEvent(title: String = "Dîner"): String =
-        post("/events") {
-            contentType(ContentType.Application.Json)
-            setBody(CreateEventRequest(title = title, type = "DINNER"))
-        }.body<CreatedDto>().id
-
     private val inAWeek = LocalDate.now().plusDays(7).toString()
 
     @Test

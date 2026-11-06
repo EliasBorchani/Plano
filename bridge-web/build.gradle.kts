@@ -27,6 +27,7 @@ kotlin {
             implementation(projects.domain.events.data)
             implementation(projects.domain.polls.data)
             implementation(projects.utilities.network)
+            implementation(projects.contract)
 
             implementation(libs.koin.core)
         }

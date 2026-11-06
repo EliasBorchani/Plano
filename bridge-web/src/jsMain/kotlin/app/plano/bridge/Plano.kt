@@ -1,5 +1,6 @@
 package app.plano.bridge
 
+import app.plano.contract.Routes
 import app.plano.data.auth.di.authDataModule
 import app.plano.data.events.di.eventsDataModule
 import app.plano.data.polls.di.pollsDataModule
@@ -11,6 +12,8 @@ import app.plano.features.events.list.EventListViewModel
 import app.plano.features.signin.SignInViewModel
 import app.plano.features.signin.signInFeatureModule
 import app.plano.utilities.network.NetworkConfig
+import app.plano.utilities.network.RefreshConfig
+import app.plano.utilities.network.SessionEvents
 import app.plano.utilities.network.createHttpClient
 import io.ktor.client.HttpClient
 import org.koin.core.Koin
@@ -27,7 +30,16 @@ private fun requireKoin(): Koin = checkNotNull(koin) { "Call startPlano() first"
 fun startPlano(apiBaseUrl: String) {
     if (koin != null) return
     val network = module {
-        single<HttpClient> { createHttpClient(NetworkConfig(baseUrl = apiBaseUrl)) }
+        single { SessionEvents() }
+        single<HttpClient> {
+            createHttpClient(
+                NetworkConfig(
+                    baseUrl = apiBaseUrl,
+                    refresh = RefreshConfig(refreshPath = Routes.REFRESH, skipPrefix = Routes.AUTH_PREFIX),
+                ),
+                sessionEvents = get(),
+            )
+        }
     }
     koin = startKoin {
         modules(
