@@ -5,8 +5,27 @@ what they do not: where the project stands, decisions taken along the way, known
 
 ## Where we are (2026-11-25)
 
-PRD step 1, the KMP-to-JS slice, then access and refresh tokens: committed and pushed (`main`). Now **guest
-voting**: a name is enough to take part (PRD decision).
+**PRD step 3, the link library**, done (after guest voting, below). No UI yet: link options arrive with the place
+poll.
+
+- `domain/links/api` (JVM + JS): `Links.card(text)` finds the link in pasted text (share text works), strips
+  tracking parameters (`utm_*`, `fbclid`, Google's `entry`, `g_ep`, `skid`…), sorts the query (canonical address:
+  same address = one option), unwraps Google's EU consent page, and parses Google Maps (owner: Google Maps only for
+  now): name from `/place/` or `/search/`, position from `!3d…!4d…` (precise) or a `q=` pin, else the `@` view
+  center (marked imprecise). Canonical Google address rebuilt from name + position, so two shares of one place
+  match. Other links: generic card, title guessed from the address words (`le-petit-bistrot-48213.html` → « Le petit
+  bistrot »), else the host.
+- Server `POST links/preview`: follows Google short links, reads unknown pages' titles, behind `SafeFetcher`
+  (`server/AGENTS.md`). OkHttp 5.5.1 and jsoup 1.24.1 added (server only).
+- Tests: `LinksTest` (10, on the owner's three real links: Pathé Île Seguin, CrossFit Le Trapèze, 4PADEL), JVM and
+  Node; server `LinkPreviewTest` (7) against a local fake web.
+- Checked against the real internet with the server running: Wikipedia pages give their title and description; the
+  Pathé link parses with no request to Google; `169.254.169.254` is refused (guessed title only); an unknown
+  `maps.app.goo.gl` link stays unresolved. **Not checked: a real short link** (none at hand): send one to test.
+
+## Guest voting (2026-11-25)
+
+A name is enough to take part (PRD decision).
 
 - A guest is an `app_user` with no `auth_identity`, **bound to one event** (`guest_event_id`, owner's choice), with
   the same tokens as an account. Same rights as members (friend-group default role: planner), but cannot create
@@ -82,10 +101,14 @@ Step 1 itself:
 - No deadline, validation of the winning date, RSVP, notifications, place poll, groups.
 - Guests: anyone can create many guests on a link they hold (no rate limit). Native apps cannot merge a guest at
   sign-in yet (the server reads the guest from the web refresh cookie only).
+- Link previews: no rate limit per user; Apple Maps, Waze, OpenStreetMap, lodging and ticket parsers not written
+  (generic card meanwhile).
 - No lint or formatting tool wired yet (Tummy uses Spotless with ktlint).
 
 ## Next steps
 
-1. Owner review of guest voting (committed and pushed, the owner allowed it on 2026-11-25).
-2. PRD step 3, the link library in shared Kotlin (a new context in `domain/`).
-3. Google client ID: the owner wants to be guided through it when it matters (first deployment).
+1. Owner review of guest voting and the link library (committed and pushed, the owner allowed it on 2026-11-25).
+2. A real `maps.app.goo.gl` short link from the owner, to check resolution end to end.
+3. PRD step 4, place search prototype: public Nominatim on submit (1 request/s, identifying User-Agent), places
+   stored with the OSM id and a copy of name, address, coordinates; match a Google link by name near its position.
+4. Google client ID: the owner wants to be guided through it when it matters (first deployment).

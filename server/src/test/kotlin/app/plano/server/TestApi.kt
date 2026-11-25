@@ -12,6 +12,7 @@ import app.plano.domain.auth.model.AuthProvider
 import app.plano.server.auth.DevAppleVerifier
 import app.plano.server.auth.IdTokenVerifier
 import app.plano.server.auth.VerifiedIdentity
+import app.plano.server.links.SafeFetcher
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -52,7 +53,11 @@ private val fakeGoogle = IdTokenVerifier {
 val TEST_JWT_SECRET = "test-secret-that-is-at-least-32-bytes-long".toByteArray()
 
 /** The app on a fresh database. Routes are served at the root, so cookie paths have no `/api` prefix. */
-fun api(clock: Clock = Clock.systemUTC(), block: suspend ApplicationTestBuilder.() -> Unit) = TestDatabase().use { database ->
+fun api(
+    clock: Clock = Clock.systemUTC(),
+    linkFetcher: SafeFetcher = SafeFetcher(),
+    block: suspend ApplicationTestBuilder.() -> Unit,
+) = TestDatabase().use { database ->
     testApplication {
         application {
             plano(
@@ -63,6 +68,7 @@ fun api(clock: Clock = Clock.systemUTC(), block: suspend ApplicationTestBuilder.
                     jwtSecret = TEST_JWT_SECRET,
                     publicApiPath = "",
                     clock = clock,
+                    linkFetcher = linkFetcher,
                 ),
             )
         }

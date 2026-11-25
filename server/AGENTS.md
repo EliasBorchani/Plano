@@ -42,6 +42,15 @@ with the shared Kotlin code (`contract`, `domain/*/api`) the clients run.
 - Date poll (`polls/`): `GET /events/{id}/poll`, `POST …/poll/options {date}` (planners; no past date, a day of
   slack for time zones; a date once per poll → 409), `PUT …/poll/options/{optionId}/vote {choice|null}`. Mutations
   answer with the whole poll.
+- Link previews (`links/`): `POST links/preview {text}` (signed in, guests too) → `LinkCardDto`. The shared
+  `Links.card` cleans and parses; the server only adds what needs fetching. Google short links: redirects followed on
+  Google hosts only, up to 5, never loading a page, until a Google Maps long link appears (EU consent page unwrapped
+  by `Links.clean`). Other links with a guessed title: the page's `og:title`/`<title>` and description (jsoup).
+  **Never fetch a Google page** (content may not be stored).
+- `SafeFetcher`: http(s) on ports 80/443, every address checked by `AddressPolicy` (no loopback, private,
+  link-local, CGNAT, multicast, ULA) through OkHttp's `Dns`, so the connection uses exactly the checked addresses;
+  literal IPs checked before the call; 5 s timeout, 512 KB read, 5 redirects, each hop checked. Generic
+  User-Agent. Tests relax the policy and map every host to a local `HttpServer`.
 - Access: `requireUser` reads the caller from the access token (401 when missing or expired); `requireRole` gives the caller's role or 404, so a non-member never learns an event exists; 403 only for
   a member who may not do something (a participant adding a date).
 - Errors: `ApiError(status, code)` → `{code, message}` JSON (`Errors.kt`). Codes are the shared enum names where one

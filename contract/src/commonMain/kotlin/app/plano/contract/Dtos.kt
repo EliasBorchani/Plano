@@ -128,3 +128,26 @@ data class ErrorDto(
     val code: String,
     val message: String,
 )
+
+@Serializable
+data class LinkPreviewRequest(
+    /** What the user pasted: a link, or share text with a link in it. */
+    val text: String,
+)
+
+@Serializable
+data class LinkCardDto(
+    val url: String,
+    val canonicalUrl: String,
+    /** `LinkPlatform` name. */
+    val platform: String,
+    val title: String? = null,
+    val titleIsGuess: Boolean,
+    val description: String? = null,
+    val placeName: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val coordinatesArePrecise: Boolean = false,
+    /** Still a short link: following it failed, the user should paste the long link or search by name. */
+    val needsResolution: Boolean,
+)

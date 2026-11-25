@@ -18,6 +18,7 @@ dependencies {
     implementation(projects.domain.auth.api)
     implementation(projects.domain.events.api)
     implementation(projects.domain.polls.api)
+    implementation(projects.domain.links.api)
 
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
@@ -32,6 +33,9 @@ dependencies {
     implementation(libs.flyway.postgresql)
     implementation(libs.nimbus.jose.jwt)
     implementation(libs.logback)
+    // Link previews: OkHttp for its pluggable DNS (address checks), jsoup to read page titles.
+    implementation(libs.okhttp)
+    implementation(libs.jsoup)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.test.host)

@@ -32,6 +32,7 @@ domain/
           data/     HttpAuthRepository (tokens = httpOnly cookies), authDataModule
   events/ api/      EventType (27), Role, Event, NewEvent + validate(), EventRepository
           data/     HttpEventRepository (in-memory cache + refresh), eventsDataModule
+  links/  api/      Links (clean, identify, parse), WebUrl, GoogleMaps, LinkCard: pure rules, no :data yet
   polls/  api/      VoteChoice, DatePoll, PollTally (pure), PollRepository
           data/     HttpPollRepository (mutations return the poll), pollsDataModule
 

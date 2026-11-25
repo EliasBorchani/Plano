@@ -9,6 +9,7 @@ object Routes {
     /** Auth routes never trigger a refresh-and-retry in the client. */
     const val AUTH_PREFIX = "auth/"
     const val EVENTS = "events"
+    const val LINK_PREVIEW = "links/preview"
 
     fun signIn(provider: String) = "auth/$provider"
 

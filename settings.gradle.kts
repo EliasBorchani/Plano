@@ -33,6 +33,8 @@ include(":domain:events:api")
 include(":domain:events:data")
 include(":domain:polls:api")
 include(":domain:polls:data")
+// Pure rules for now (clean, identify, parse); the server fetches pages. A :data module comes with the place poll.
+include(":domain:links:api")
 
 // Features (VM + state, commonMain only)
 include(":features:signin")
