@@ -28,7 +28,8 @@ Android (Compose) and iOS (SwiftUI) come later and will use the same `features/*
 
 ## Quick start
 
-Needs Docker, JDK 21 and Node 22+.
+Needs a Docker engine with Compose (Docker Desktop, or Colima: `brew install colima docker-compose && colima start`),
+JDK 21 and Node 22+.
 
 ```sh
 cp .env.example .env                      # set POSTGRES_PASSWORD; GOOGLE_CLIENT_ID for Google sign-in

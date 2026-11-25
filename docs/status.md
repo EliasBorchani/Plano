@@ -16,9 +16,10 @@ what they do not: where the project stands, decisions taken along the way, known
 - Server: `place` table, `Nominatim` client (1 request/s, 24 h cache), routes `places/search`, `places`,
   `places/from-link` (`server/AGENTS.md`).
 - Tests: `PlaceMatchingTest` (6, on the real candidates), server `PlaceTest` (7) against a fake Nominatim.
-- **Not checked end to end against the real Nominatim**: Docker Desktop disappeared from `/Applications` during the
-  session, so no Postgres to run the server. The matching rule was checked on the real answers (above), the
-  server path only against the fake.
+- Checked end to end against the real Nominatim (server + Postgres, 2026-11-25): `places/from-link` gives Pathé
+  (OSM `N14003653721`, Parvis amont, found by the first-word fallback), Crossfit le Trapèze (OSM `N6790321285`,
+  32 Rue Marcel Bontemps) and 4PADEL as a `LINK` place (not in OpenStreetMap), 2 to 3 s each because of the 1 request/s
+  limit. `places/search?q=Pathé Boulogne` answers in about 1 s.
 
 ## Link library (2026-11-25)
 
@@ -125,7 +126,6 @@ Step 1 itself:
 
 1. Owner review of guest voting and the link library (committed and pushed, the owner allowed it on 2026-11-25).
 2. A real `maps.app.goo.gl` short link from the owner, to check resolution end to end.
-3. Docker back on this machine, then the real-Nominatim check of `places/from-link` with the three sample links.
-4. PRD step 5, the data model: guests and accounts (done), groups, invitations, RSVP, polls with place or link
+3. PRD step 5, the data model: guests and accounts (done), groups, invitations, RSVP, polls with place or link
    options, notification schedules.
 4. Google client ID: the owner wants to be guided through it when it matters (first deployment).
