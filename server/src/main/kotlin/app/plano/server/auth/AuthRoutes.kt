@@ -3,9 +3,11 @@ package app.plano.server.auth
 import app.plano.contract.JoinAsGuestRequest
 import app.plano.contract.RefreshRequest
 import app.plano.contract.Routes
+import app.plano.contract.UpdateProfileRequest
 import app.plano.contract.SignInRequest
 import app.plano.contract.TokenPairDto
 import app.plano.domain.auth.model.AuthProvider
+import app.plano.server.invalid
 import app.plano.server.notFound
 import app.plano.server.toUuidOr404
 import app.plano.server.unauthorized
@@ -19,6 +21,7 @@ import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import kotlinx.serialization.json.Json
 import java.time.Duration
@@ -82,6 +85,17 @@ fun Route.authRoutes(auth: Auth) {
         call.signInAs(auth, auth.users.guestOf(eventId, guestId))
     }
 
+    get(Routes.invitation("{token}")) {
+        val token = call.parameters["token"] ?: notFound()
+        call.respond(auth.users.invitation(token).first)
+    }
+
+    // The personal link of someone invited by email: it signs them in on any device, until they make an account.
+    post(Routes.invitation("{token}")) {
+        val token = call.parameters["token"] ?: notFound()
+        call.signInAs(auth, auth.users.invitation(token).second)
+    }
+
     post(Routes.REFRESH) {
         val fromBody = call.refreshTokenFromBody()
         val raw = fromBody ?: call.request.cookies[REFRESH_COOKIE]
@@ -116,6 +130,19 @@ fun Route.authRoutes(auth: Auth) {
         // A deleted account keeps valid access tokens until they expire: treat it as signed out.
         val user = auth.users.find(principal.userId) ?: unauthorized()
         call.respond(user.toDto())
+    }
+
+    patch(Routes.ME) {
+        val principal = call.requireUser(auth)
+        val body = call.receive<UpdateProfileRequest>()
+        call.respond(auth.users.setSearchable(principal.userId, body.searchable).toDto())
+    }
+
+    get(Routes.USER_SEARCH) {
+        val principal = call.requireUser(auth)
+        val text = call.request.queryParameters["q"].orEmpty()
+        if (text.trim().length < 2) invalid("QUERY_TOO_SHORT")
+        call.respond(auth.users.search(text, principal.userId))
     }
 }
 

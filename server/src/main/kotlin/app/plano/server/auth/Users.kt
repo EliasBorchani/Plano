@@ -2,6 +2,8 @@ package app.plano.server.auth
 
 import app.plano.contract.GuestDto
 import app.plano.contract.GuestInviteDto
+import app.plano.contract.InvitationPreviewDto
+import app.plano.contract.PersonDto
 import app.plano.contract.UserDto
 import app.plano.domain.auth.model.AuthProvider
 import app.plano.domain.auth.model.GuestName
@@ -11,6 +13,7 @@ import app.plano.server.ApiError
 import app.plano.server.Db
 import app.plano.server.invalid
 import app.plano.server.notFound
+import app.plano.server.unauthorized
 import app.plano.server.query
 import app.plano.server.update
 import io.ktor.http.HttpStatusCode
@@ -23,19 +26,27 @@ data class AuthUser(
     val displayName: String,
     val email: String?,
     val guestEventId: UUID? = null,
+    val searchable: Boolean = false,
 ) {
     val isGuest: Boolean get() = guestEventId != null
 
-    fun toDto() = UserDto(id = id.toString(), displayName = displayName, email = email, guestEventId = guestEventId?.toString())
+    fun toDto() = UserDto(
+        id = id.toString(),
+        displayName = displayName,
+        email = email,
+        guestEventId = guestEventId?.toString(),
+        searchable = searchable,
+    )
 }
 
-private const val USER_COLUMNS = "u.id, u.display_name, u.email, u.guest_event_id"
+private const val USER_COLUMNS = "u.id, u.display_name, u.email, u.guest_event_id, u.searchable"
 
 private fun ResultSet.toUser() = AuthUser(
     id = getObject(1, UUID::class.java),
     displayName = getString(2),
     email = getString(3),
     guestEventId = getObject(4, UUID::class.java),
+    searchable = getBoolean(5),
 )
 
 class Users(private val db: Db) {
@@ -83,10 +94,13 @@ class Users(private val db: Db) {
 
     suspend fun find(id: UUID): AuthUser? = db.tx { findUser(id) }
 
-    /** The event link's public face. 404 when the event does not exist. */
+    /**
+     * The event link's public face. 404 when the event does not exist. People invited by email are left out: they
+     * come back through their personal link, and « C'est moi » must not let someone else take their place.
+     */
     suspend fun guestInvite(eventId: UUID): GuestInviteDto = db.tx {
         val guests = query(
-            "select id, display_name from app_user where guest_event_id = ? order by created_at",
+            "select id, display_name from app_user where guest_event_id = ? and email is null order by created_at",
             eventId,
         ) { GuestDto(it.getString(1), it.getString(2)) }
         query("select id, title, type from event where id = ?", eventId) {
@@ -111,13 +125,54 @@ class Users(private val db: Db) {
             name,
             eventId,
         ) { it.getObject(1, UUID::class.java) }.single()
-        update("insert into event_member (event_id, user_id, role) values (?, ?, ?)", eventId, id, Role.DEFAULT_FOR_NEW_MEMBER.name)
+        update(
+            "insert into event_member (event_id, user_id, role, status) values (?, ?, ?, 'JOINED')",
+            eventId,
+            id,
+            Role.DEFAULT_FOR_NEW_MEMBER.name,
+        )
         AuthUser(id, name, null, eventId)
     }
 
-    /** The guest [guestId] of [eventId], or 404 (unknown, an account, or a guest of another event). */
+    /** The guest [guestId] of [eventId], or 404 (unknown, an account, a guest of another event, invited by email). */
     suspend fun guestOf(eventId: UUID, guestId: UUID): AuthUser = db.tx {
-        findUser(guestId)?.takeIf { it.guestEventId == eventId } ?: notFound()
+        findUser(guestId)?.takeIf { it.guestEventId == eventId && it.email == null } ?: notFound()
+    }
+
+    /** What a personal invitation link shows. 404 once the invitee made an account (they sign in with it). */
+    suspend fun invitation(token: String): Pair<InvitationPreviewDto, AuthUser> = db.tx {
+        query(
+            "select e.id, e.title, e.type, $USER_COLUMNS from event_invitation i join event e on e.id = i.event_id " +
+                "join app_user u on u.id = i.user_id where i.token = ? and u.guest_event_id = i.event_id",
+            token,
+        ) {
+            val user = AuthUser(
+                id = it.getObject(4, UUID::class.java),
+                displayName = it.getString(5),
+                email = it.getString(6),
+                guestEventId = it.getObject(7, UUID::class.java),
+            )
+            InvitationPreviewDto(it.getString(1), it.getString(2), it.getString(3), user.displayName) to user
+        }.firstOrNull() ?: notFound()
+    }
+
+    /** Accounts only: a guest cannot be found by name, they belong to one event. */
+    suspend fun setSearchable(userId: UUID, searchable: Boolean): AuthUser = db.tx {
+        val user = findUser(userId) ?: unauthorized()
+        if (user.isGuest) throw ApiError(HttpStatusCode.Forbidden, "GUEST_CANNOT_BE_SEARCHABLE")
+        update("update app_user set searchable = ? where id = ?", searchable, userId)
+        user.copy(searchable = searchable)
+    }
+
+    /** Searchable accounts whose name contains [text], case ignored (accents are not, for now). */
+    suspend fun search(text: String, caller: UUID): List<PersonDto> = db.tx {
+        val pattern = "%" + text.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        query(
+            "select id, display_name from app_user where searchable and guest_event_id is null and id <> ? " +
+                "and display_name ilike ? order by display_name limit 20",
+            caller,
+            pattern,
+        ) { PersonDto(it.getString(1), it.getString(2)) }
     }
 
     private fun Connection.findUser(id: UUID): AuthUser? =
@@ -144,8 +199,9 @@ class Users(private val db: Db) {
      */
     private fun Connection.mergeGuest(guest: AuthUser, into: AuthUser) {
         update(
-            "insert into event_member (event_id, user_id, role, joined_at) " +
-                "select event_id, ?, role, joined_at from event_member where user_id = ? on conflict do nothing",
+            "insert into event_member (event_id, user_id, role, joined_at, status, rsvp, invited_by) " +
+                "select event_id, ?, role, joined_at, status, rsvp, invited_by from event_member where user_id = ? " +
+                "on conflict do nothing",
             into.id,
             guest.id,
         )

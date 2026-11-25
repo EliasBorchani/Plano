@@ -30,11 +30,12 @@ contract/           @Serializable DTOs + Routes; enum fields as names (strings),
 domain/
   auth/   api/      User (guest or account), AuthProvider, Session, GuestName (shared rule), GuestInvite, AuthRepository
           data/     HttpAuthRepository (tokens = httpOnly cookies), authDataModule
-  events/ api/      EventType (27), Role, Event, NewEvent + validate(), EventRepository
+  events/ api/      EventType (27), Role, MemberStatus, Rsvp, Invitees, EmailAddress, Event, NewEvent + validate(), EventRepository
           data/     HttpEventRepository (in-memory cache + refresh), eventsDataModule
   links/  api/      Links (clean, identify, parse), WebUrl, GoogleMaps, LinkCard: pure rules, no :data yet
   places/ api/      GeoPoint, PlaceCandidate, PlaceMatching (Google link ↔ OpenStreetMap), PlaceQuery: rules only
-  polls/  api/      VoteChoice, DatePoll, PollTally (pure), PollRepository
+  groups/ api/      GroupName, InviteLimits (link limit and expiry): rules only
+  polls/  api/      VoteChoice, DatePoll, PollTally (pure), PollKind, PollRules (deadline, reminders), PollRepository
           data/     HttpPollRepository (mutations return the poll), pollsDataModule
 
 features/

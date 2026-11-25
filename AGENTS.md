@@ -13,19 +13,20 @@ Docs tools). It is the source of truth for product decisions; when it and this r
 | --- | --- | --- |
 | `utilities/` | `kotlin-ext` (`AppError`), `network` (Ktor client factory), `presentation` (`BaseViewModel`) | `docs/architecture.md` |
 | `contract/` | Wire DTOs and route paths, shared by the client `:data` modules and the server | `docs/architecture.md` |
-| `domain/<ctx>/{api,data}` | Bounded contexts `auth`, `events`, `polls`, `links`, `places` (rules only for now): models, rules and repository contracts in `api`, Ktor implementations in `data` | `docs/architecture.md` |
+| `domain/<ctx>/{api,data}` | Bounded contexts `auth`, `events`, `polls`, `links`, `places`, `groups` (the last three rules only for now): models, rules and repository contracts in `api`, Ktor implementations in `data` | `docs/architecture.md` |
 | `features/<name>` | View models (MVI) and their exported UI state: `signin`, `events`, `event` | `docs/architecture.md` |
 | `bridge-web/` | The web umbrella: one ES module `plano-shared` with TypeScript types, consumed by `apps/web` | `docs/kmp-js-friction.md` |
-| `server/` | Ktor backend: sign-in, guests, access and refresh tokens, events, date poll, link previews, places (Nominatim) | `server/AGENTS.md` |
+| `server/` | Ktor backend: sign-in, guests, tokens, events with invitations, RSVP and archiving, date and place polls, groups, link previews, places (Nominatim) | `server/AGENTS.md` |
 | `apps/web/` | React web app (mobile-first, French) | `apps/web/AGENTS.md` |
 | `apps/android/`, `apps/ios/` | later (mobile milestone), consuming the same `features/*` | |
 | `build-logic/` | Convention plugins `plano.kmp.library` (JVM + JS targets) and `plano.kmp.feature` | |
 | `docs/` | `status.md` (where the project stands), `architecture.md`, `kmp-js-friction.md` (step 1 findings) | |
 
-## Current phase: PRD step 1, the KMP-to-JS slice
+## Current phase: PRD steps 1 to 5 done, step 6 (screen sketches) next
 
-Google and Apple sign-in, create an event, one date poll, with the whole shared layer compiled to JavaScript and React
-for the UI only. Status and open points: `docs/status.md`. The owner reviews the code before any commit.
+The web app covers sign-in, guests, events and the date poll; the server and shared rules also cover links, places,
+groups, invitations, RSVP, the place poll, deadlines and archiving (no screens yet). Status, decisions and open
+points: `docs/status.md`. The owner allows commits and pushes on `main` (2026-11-25) and reviews afterwards.
 
 ## Load-bearing decisions (do not reverse without the owner)
 

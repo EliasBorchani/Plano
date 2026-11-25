@@ -59,6 +59,14 @@ fun api(
     linkFetcher: SafeFetcher = SafeFetcher(),
     nominatim: Nominatim = Nominatim("http://127.0.0.1:9/"),
     block: suspend ApplicationTestBuilder.() -> Unit,
+) = apiWithDb(clock, linkFetcher, nominatim) { block() }
+
+/** As [api], with the database at hand to check what no route shows (reminder rows). */
+fun apiWithDb(
+    clock: Clock = Clock.systemUTC(),
+    linkFetcher: SafeFetcher = SafeFetcher(),
+    nominatim: Nominatim = Nominatim("http://127.0.0.1:9/"),
+    block: suspend ApplicationTestBuilder.(Db) -> Unit,
 ) = TestDatabase().use { database ->
     testApplication {
         application {
@@ -75,7 +83,7 @@ fun api(
                 ),
             )
         }
-        block()
+        block(database.db)
     }
 }
 

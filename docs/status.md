@@ -5,7 +5,40 @@ what they do not: where the project stands, decisions taken along the way, known
 
 ## Where we are (2026-11-25)
 
-**PRD step 4, the place search prototype**, done on the server (no UI yet, it comes with the place poll).
+**PRD step 5, the data model**, done on the server and in the shared rules (no UI yet: PRD step 6 is the screen
+sketches). Migration `V5__data_model.sql`, routes in `server/AGENTS.md`, tests `DataModelTest` (11).
+
+Owner decisions (2026-11-25):
+- **Member status** `INVITED` (added by a planner, default) → `JOINED` (opened the event once) → `LEFT` (left or
+  removed: title and type only, a « left » label for the others). Guests from the shared link start `JOINED`. The
+  RSVP (`NOT_ANSWERED`, `COMING`, `NOT_COMING`) is a separate answer on the same row.
+- **Email invitations**: someone with no account becomes a guest of that event with the email and a personal link
+  (`auth/invite/{token}`), shown to planners until emails are sent. An email that matches an account invites the
+  account.
+- **Poll deadlines are required**: the first option starts the poll with a 7-day deadline, planners move it.
+- **Every group member** manages the group link (limit, expiry, new link) and can remove anyone.
+
+Decisions taken without the owner (say if one is wrong):
+- **Place poll options**: a stored place (OpenStreetMap or from a maps link) or a plain link card (URL cleaned by
+  `Links.card`, title given by the client: the PRD's editable title). Same three vote choices as dates.
+- **Validation** closes the vote; a planner can change or cancel it. A changed choice resets every RSVP; a first
+  choice does not (people may answer before). Adding options also needs an open poll.
+- **Reminders** (`poll_reminder` rows, `PollRules.schedule`): started, 2 days before, last day, last hour. A
+  reminder already past is skipped, not sent late; rows are rebuilt when the deadline moves, dropped on
+  validation. **Nothing sends them yet**: that comes with an email provider.
+- **Who a planner can invite by id**: a searchable account (`PATCH me {searchable}`, off by default), or someone
+  they share a group or an event with. Name search: `users/search?q=` (case-insensitive, accents not ignored yet).
+- Leaving or being removed deletes your votes in the event (options you added stay); the owner cannot leave.
+  The event link does not bring back someone who left: a planner invites them again.
+- Archiving: the owner, `PUT events/{id}/archived {archived}`; unarchiving is allowed. Reading still works.
+- Inviting by email tells the planner whether that email has an account (no personal link comes back). Accepted
+  for now; revisit if it matters.
+- An email invitee is a guest bound to one event (V3 rule): the same email in two events is two guests until they
+  make an account. People invited by email are not offered in « C'est moi ».
+
+## Place search prototype (2026-11-25)
+
+PRD step 4, done on the server (no UI yet, it comes with the place poll).
 
 - Real Nominatim answers around the owner's three links (2026-11-25): « Pathé Île Seguin » finds nothing by its
   full name (OpenStreetMap calls it « Pathé », 57 m away); « CrossFit Le Trapèze » is found (15 m); « 4PADEL » is
@@ -126,6 +159,6 @@ Step 1 itself:
 
 1. Owner review of guest voting and the link library (committed and pushed, the owner allowed it on 2026-11-25).
 2. A real `maps.app.goo.gl` short link from the owner, to check resolution end to end.
-3. PRD step 5, the data model: guests and accounts (done), groups, invitations, RSVP, polls with place or link
+3. PRD step 6, the screen sketches, the data model: guests and accounts (done), groups, invitations, RSVP, polls with place or link
    options, notification schedules.
 4. Google client ID: the owner wants to be guided through it when it matters (first deployment).

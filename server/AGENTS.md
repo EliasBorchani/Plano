@@ -36,12 +36,30 @@ with the shared Kotlin code (`contract`, `domain/*/api`) the clients run.
   added dates; **the account's vote wins** on a date both voted on, owner's rule) and deletes the guest.
 - Providers come from the environment (`Main.kt`, `verifiersFor`): Google when `GOOGLE_CLIENT_ID` is set; Apple when
   `APPLE_SERVICES_ID` is set, else `DevAppleVerifier` (accepts `dev:<name>`) only when `APP_ENV=dev`.
-- Events (`events/`): `GET /events`, `POST /events` (validated with the shared `NewEvent.validate()`; creates the
-  owner membership and the date poll), `GET /events/{id}`, `POST /events/{id}/join` (slice rule: anyone signed in
-  with the link joins as planner; invitations come later).
-- Date poll (`polls/`): `GET /events/{id}/poll`, `POST …/poll/options {date}` (planners; no past date, a day of
-  slack for time zones; a date once per poll → 409), `PUT …/poll/options/{optionId}/vote {choice|null}`. Mutations
-  answer with the whole poll.
+- Events (`events/`, `V5__data_model.sql`): `GET /events` (also `LEFT` ones, title and type), `POST /events`
+  (validated with the shared `NewEvent.validate()`; owner membership, the date and place polls, and `invitees`),
+  `GET /events/{id}` (turns `INVITED` into `JOINED`; a `LEFT` member gets title and type only), `POST
+  /events/{id}/join` (anyone signed in with the link joins as planner; not someone who left → 403 `MEMBER_LEFT`).
+- Members: `event_member.status` (`INVITED`, `JOINED`, `LEFT`) and `rsvp`. `POST events/{id}/invitations
+  {userIds, groups: [{groupId, untickedUserIds}], emails: [{email, displayName?}]}` (planners; the shared
+  `Invitees.resolve` invites each person once; ids must be searchable accounts or people the planner shares a
+  group or event with, else 400 `INVITEE_UNKNOWN`; picked groups are kept in `event_group`), `GET …/invitations`
+  (planners: personal links of email invitees), `DELETE events/{id}/members/{userId}` (leave, or planners remove;
+  owner cannot → `OWNER_CANNOT_LEAVE`), `PUT …/rsvp {answer}`, `PUT …/archived {archived}` (owner).
+- Email invitees: a guest (`guest_event_id`) with an email and an `event_invitation` token. `GET|POST
+  auth/invite/{token}` previews or signs in as them; not listed for « C'est moi ». After they make an account → 404.
+- Polls (`polls/`): one `DATE` and one `PLACE` poll per event, at `events/{id}/polls/{date|place}`: `GET`, `POST
+  …/options {date | placeId | link{url,title}}` (planners), `PUT …/options/{optionId}/vote {choice|null}`, `PUT
+  …/deadline {deadline}` (planners, at least 1 h ahead, reopens a closed poll), `PUT …/validated {optionId|null}`
+  (planners; a changed choice resets every RSVP). The first option starts the poll with a 7-day deadline and writes
+  `poll_reminder` rows (`PollRules.schedule`). Votes and options need an open poll (`409 POLL_CLOSED` after the
+  deadline or once validated). The first web client's routes `events/{id}/poll…` still serve the date poll.
+  Mutations answer with the whole poll.
+- Groups (`groups/`): `GET|POST groups`, `GET groups/{id}`, `PUT groups/{id}/invite {maxUses, expiresInDays,
+  newLink}`, `DELETE groups/{id}/members/{userId}`, `GET groups/{id}/events` (only events the caller is in);
+  `GET|POST group-invites/{token}` (public preview; join: accounts only, 410 `INVITE_EXPIRED`/`INVITE_FULL`).
+  Every member manages the link and members (owner). A non-member gets 404. Rules in `domain/groups/api`.
+- People: `PATCH me {searchable}` (accounts only), `GET users/search?q=` (searchable accounts, 20 at most).
 - Link previews (`links/`): `POST links/preview {text}` (signed in, guests too) → `LinkCardDto`. The shared
   `Links.card` cleans and parses; the server only adds what needs fetching. Google short links: redirects followed on
   Google hosts only, up to 5, never loading a page, until a Google Maps long link appears (EU consent page unwrapped
@@ -60,13 +78,16 @@ with the shared Kotlin code (`contract`, `domain/*/api`) the clients run.
   link-local, CGNAT, multicast, ULA) through OkHttp's `Dns`, so the connection uses exactly the checked addresses;
   literal IPs checked before the call; 5 s timeout, 512 KB read, 5 redirects, each hop checked. Generic
   User-Agent. Tests relax the policy and map every host to a local `HttpServer`.
-- Access: `requireUser` reads the caller from the access token (401 when missing or expired); `requireRole` gives the caller's role or 404, so a non-member never learns an event exists; 403 only for
-  a member who may not do something (a participant adding a date).
+- Access (`events/Access.kt`): `requireUser` reads the caller from the access token (401 when missing or
+  expired); `requireRole` gives the caller's role or 404, so a non-member never learns an event exists, and 403
+  `MEMBER_LEFT` for someone who left; `requireEditable` adds 409 `EVENT_ARCHIVED`. 403 only for a member who may
+  not do something (a participant adding a date). Times come from `Deps.clock` (tests move it).
 - Errors: `ApiError(status, code)` → `{code, message}` JSON (`Errors.kt`). Codes are the shared enum names where one
   exists (`TITLE_MISSING`, `DATE_ALREADY_OFFERED`).
 
 ## Rules
 
-- Add every new event route behind `requireRole`, and a test in `ApiTest` calling it as a stranger.
+- Add every new event or group route behind `requireRole` (or `requireEditable`, `requireGroupMember`), and a
+  stranger test (`ApiTest`, `DataModelTest.strangersGet404OnEveryNewRoute`).
 - Migrations are append-only: never edit a released `V*.sql`, add the next one.
 - Never store Google content other than a place ID (PRD, Risks).

@@ -10,6 +10,7 @@ import app.plano.server.auth.RefreshTokens
 import app.plano.server.auth.Users
 import app.plano.server.auth.authRoutes
 import app.plano.server.events.eventRoutes
+import app.plano.server.groups.groupRoutes
 import app.plano.server.links.LinkPreviewer
 import app.plano.server.links.SafeFetcher
 import app.plano.server.links.linkRoutes
@@ -41,7 +42,7 @@ class Deps(
     accessTtl: Duration = Duration.ofMinutes(15),
     refreshTtl: Duration = Duration.ofDays(30),
     publicApiPath: String = "/api",
-    clock: Clock = Clock.systemUTC(),
+    val clock: Clock = Clock.systemUTC(),
     linkFetcher: SafeFetcher = SafeFetcher(),
     nominatim: Nominatim = Nominatim(),
 ) {
@@ -75,7 +76,8 @@ fun Application.plano(deps: Deps) {
     routing {
         authRoutes(deps.auth)
         eventRoutes(deps.db, deps.auth)
-        pollRoutes(deps.db, deps.auth)
+        pollRoutes(deps.db, deps.auth, deps.clock)
+        groupRoutes(deps.db, deps.auth, deps.clock)
         linkRoutes(deps.auth, deps.links)
         placeRoutes(deps.auth, deps.places)
     }

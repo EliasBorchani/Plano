@@ -37,6 +37,8 @@ include(":domain:polls:data")
 include(":domain:links:api")
 // Places from OpenStreetMap (Nominatim, server side) and the matching rule; :data comes with the place poll.
 include(":domain:places:api")
+// Groups: rules only for now (name, invite link limits); the server stores them, a :data module comes with the screens.
+include(":domain:groups:api")
 
 // Features (VM + state, commonMain only)
 include(":features:signin")

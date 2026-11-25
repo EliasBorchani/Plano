@@ -74,7 +74,7 @@ class Places(private val db: Db, private val nominatim: Nominatim, private val l
                 point.latitude,
                 point.longitude,
                 userId,
-            ) { it.toDto() }.single()
+            ) { it.toPlaceDto() }.single()
         }
     }
 
@@ -88,29 +88,36 @@ class Places(private val db: Db, private val nominatim: Nominatim, private val l
             candidate.point.latitude,
             candidate.point.longitude,
             userId,
-        ) { it.toDto() }.single()
+        ) { it.toPlaceDto() }.single()
     }
 
     private suspend fun stored(column: String, value: String): PlaceDto? = db.tx {
-        query("select $COLUMNS from place where $column = ?", value) { it.toDto() }.firstOrNull()
+        query("select $COLUMNS from place where $column = ?", value) { it.toPlaceDto() }.firstOrNull()
     }
 
     private companion object {
-        const val COLUMNS = "id, source, name, address, latitude, longitude, osm_ref, link_url"
+        const val COLUMNS = PLACE_COLUMNS
     }
 }
 
-private fun ResultSet.toDto(): PlaceDto {
-    val point = GeoPoint(getDouble(5), getDouble(6))
+/** The `place` columns [toPlaceDto] reads, in order; prefix them with a table alias in joins. */
+const val PLACE_COLUMNS = "id, source, name, address, latitude, longitude, osm_ref, link_url"
+
+fun placeColumns(alias: String) = PLACE_COLUMNS.split(", ").joinToString(", ") { "$alias.$it" }
+
+/** Reads [PLACE_COLUMNS] starting at column [from]. */
+fun ResultSet.toPlaceDto(from: Int = 1): PlaceDto {
+    fun at(i: Int) = from + i - 1
+    val point = GeoPoint(getDouble(at(5)), getDouble(at(6)))
     return PlaceDto(
-        id = getString(1),
-        source = PlaceSource.valueOf(getString(2)).name,
-        name = getString(3),
-        address = getString(4),
+        id = getString(at(1)),
+        source = PlaceSource.valueOf(getString(at(2))).name,
+        name = getString(at(3)),
+        address = getString(at(4)),
         latitude = point.latitude,
         longitude = point.longitude,
-        osmRef = getString(7),
-        linkUrl = getString(8),
+        osmRef = getString(at(7)),
+        linkUrl = getString(at(8)),
         googleMapsUrl = googleMapsLinkOut(point),
     )
 }
