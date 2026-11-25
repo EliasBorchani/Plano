@@ -12,6 +12,11 @@ object Routes {
 
     fun signIn(provider: String) = "auth/$provider"
 
+    /** GET: the public invite. POST: join as a new guest. Under `auth/` so the browser sends the refresh cookie. */
+    fun guestInvite(eventId: String) = "auth/guest/$eventId"
+
+    fun continueAsGuest(eventId: String, guestId: String) = "auth/guest/$eventId/as/$guestId"
+
     fun event(eventId: String) = "events/$eventId"
 
     fun join(eventId: String) = "events/$eventId/join"

@@ -30,6 +30,28 @@ data class UserDto(
     val id: String,
     val displayName: String,
     val email: String? = null,
+    /** Set for a guest: the one event this guest belongs to. */
+    val guestEventId: String? = null,
+)
+
+@Serializable
+data class GuestDto(
+    val id: String,
+    val displayName: String,
+)
+
+/** Public: what an event link shows before anyone signs in. */
+@Serializable
+data class GuestInviteDto(
+    val eventId: String,
+    val title: String,
+    val type: String,
+    val guests: List<GuestDto>,
+)
+
+@Serializable
+data class JoinAsGuestRequest(
+    val displayName: String,
 )
 
 @Serializable

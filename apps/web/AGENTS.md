@@ -17,7 +17,11 @@ Then `npm install`, `npm run dev` (port 5173, `/api` proxied to the server on 80
   lists to arrays) and the hooks. `useController(create, deps)` creates a controller in an effect, disposes it on
   unmount, and reads its state with `useSyncExternalStore`. `useControllerState` is for the app-wide session.
 - `startPlano(apiBaseUrl)` runs once in `main.tsx`; the session controller lives for the whole page
-  (`SessionContext`). `Root.tsx` shows sign-in on any URL while signed out, so an event link works before sign-in.
+  (`SessionContext`). `Root.tsx`: on an event link, `state.needsGuestEntry(eventId)` (signed out, or a guest of
+  another event) shows `GuestEntryScreen` (a name, or « C'est moi », or « J'ai un compte »); any other URL shows
+  sign-in while signed out. A guest's sign-out asks for confirmation first.
+- `auth/SignInButtons.tsx`: Google and Apple (or the dev form), on the sign-in screen and in the « Garde tes votes »
+  card that `EventState.suggestAccount` shows a guest after their first vote.
 - Event links: `/e/<id>`. Opened from inside the app (`state.fromApp`), the page loads the event; opened from a
   shared link, it joins first.
 - Sign-in: Google Identity Services (`src/auth/google.ts`) hands an ID token to `signInWithGoogle`; Sign in with

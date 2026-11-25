@@ -28,7 +28,7 @@ utilities/
 contract/           @Serializable DTOs + Routes; enum fields as names (strings), so no domain type leaks in
 
 domain/
-  auth/   api/      User, AuthProvider, Session, AuthRepository
+  auth/   api/      User (guest or account), AuthProvider, Session, GuestName (shared rule), GuestInvite, AuthRepository
           data/     HttpAuthRepository (tokens = httpOnly cookies), authDataModule
   events/ api/      EventType (27), Role, Event, NewEvent + validate(), EventRepository
           data/     HttpEventRepository (in-memory cache + refresh), eventsDataModule
@@ -36,7 +36,7 @@ domain/
           data/     HttpPollRepository (mutations return the poll), pollsDataModule
 
 features/
-  signin/           SignInViewModel: the app-wide session
+  signin/           SignInViewModel: the app-wide session; GuestEntryViewModel: join an event link with a name
   events/           EventListViewModel, CreateEventViewModel
   event/            EventViewModel: event + date poll (two contexts, combined here)
 

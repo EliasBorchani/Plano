@@ -1,9 +1,13 @@
 package app.plano.data.auth
 
+import app.plano.contract.GuestInviteDto
+import app.plano.contract.JoinAsGuestRequest
 import app.plano.contract.Routes
 import app.plano.contract.SignInRequest
 import app.plano.contract.UserDto
 import app.plano.domain.auth.model.AuthProvider
+import app.plano.domain.auth.model.Guest
+import app.plano.domain.auth.model.GuestInvite
 import app.plano.domain.auth.model.Session
 import app.plano.domain.auth.model.User
 import app.plano.domain.auth.repository.AuthRepository
@@ -53,6 +57,28 @@ class HttpAuthRepository(
         client.post(Routes.LOGOUT)
         _session.value = Session.SignedOut
     }
+
+    override suspend fun guestInvite(eventId: String): GuestInvite {
+        val dto = client.get(Routes.guestInvite(eventId)).body<GuestInviteDto>()
+        return GuestInvite(
+            eventId = dto.eventId,
+            eventTitle = dto.title,
+            eventType = dto.type,
+            guests = dto.guests.map { Guest(id = it.id, displayName = it.displayName) },
+        )
+    }
+
+    override suspend fun joinAsGuest(eventId: String, displayName: String) {
+        val user = client.post(Routes.guestInvite(eventId)) {
+            setBody(JoinAsGuestRequest(displayName))
+        }.body<UserDto>()
+        _session.value = Session.SignedIn(user.toDomain())
+    }
+
+    override suspend fun continueAsGuest(eventId: String, guestId: String) {
+        val user = client.post(Routes.continueAsGuest(eventId, guestId)).body<UserDto>()
+        _session.value = Session.SignedIn(user.toDomain())
+    }
 }
 
-private fun UserDto.toDomain() = User(id = id, displayName = displayName, email = email)
+private fun UserDto.toDomain() = User(id = id, displayName = displayName, email = email, guestEventId = guestEventId)

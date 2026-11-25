@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
+import { SignInButtons } from '../auth/SignInButtons'
 import { formatDate, todayIso } from '../format'
 import { choices, errorText, eventTypes, roles, t } from '../i18n/fr'
 import { arr, eventController, useController, type DateOptionUi, type EventController } from '../shared'
@@ -87,6 +88,14 @@ export function EventScreen() {
           </p>
         )}
       </section>
+
+      {state.suggestAccount && (
+        <section className="card stack small-gap" aria-labelledby="keep-votes">
+          <h2 id="keep-votes">{t.keepVotesTitle}</h2>
+          <p className="muted">{t.keepVotesText}</p>
+          <SignInButtons />
+        </section>
+      )}
 
       <section className="stack small-gap" aria-labelledby="people">
         <h2 id="people">

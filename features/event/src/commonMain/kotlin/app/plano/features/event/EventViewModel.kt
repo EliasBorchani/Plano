@@ -1,6 +1,7 @@
 package app.plano.features.event
 
 import app.plano.domain.auth.model.Session
+import app.plano.domain.auth.model.User
 import app.plano.domain.auth.repository.AuthRepository
 import app.plano.domain.events.model.Event
 import app.plano.domain.events.repository.EventRepository
@@ -16,6 +17,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -45,7 +50,7 @@ class EventViewModel(
         auth.session,
         ui,
     ) { event, poll, session, ui ->
-        buildState(event, poll, (session as? Session.SignedIn)?.user?.id, ui)
+        buildState(event, poll, (session as? Session.SignedIn)?.user, ui)
     }.stateIn(scope, SharingStarted.Eagerly, EventState())
 
     init {
@@ -54,6 +59,15 @@ class EventViewModel(
                 if (joinOnOpen) eventRepository.join(eventId)
                 load()
             }.onFailure { loadFailure.value = it.errorKind }
+        }
+        // A guest who signs in may be merged into an existing account: their votes now carry the account's id.
+        scope.launch {
+            auth.session
+                .map { (it as? Session.SignedIn)?.user?.id }
+                .distinctUntilChanged()
+                .drop(1)
+                .filterNotNull()
+                .collect { runCatching { load() } }
         }
     }
 
@@ -107,7 +121,8 @@ class EventViewModel(
         }
     }
 
-    private fun buildState(event: Event?, poll: DatePoll?, myUserId: String?, ui: UiFlags): EventState {
+    private fun buildState(event: Event?, poll: DatePoll?, me: User?, ui: UiFlags): EventState {
+        val myUserId = me?.id
         if (event == null || poll == null) {
             return EventState(
                 loading = ui.loadFailure == null,
@@ -140,6 +155,8 @@ class EventViewModel(
             },
             newDate = ui.newDate,
             choices = VoteChoice.entries.map { it.name },
+            // PRD: offer an account right after a guest's first vote, so the votes survive a cleared browser.
+            suggestAccount = me?.isGuest == true && myUserId != null && poll.votes.any { it.userId == myUserId },
             busy = ui.busy,
             error = ui.error,
         )

@@ -9,6 +9,7 @@ import app.plano.contract.Routes
 import app.plano.domain.events.model.EventType
 import app.plano.domain.events.model.NewEvent
 import app.plano.domain.events.model.Role
+import app.plano.server.ApiError
 import app.plano.server.Db
 import app.plano.server.auth.Auth
 import app.plano.server.auth.requireUser
@@ -32,6 +33,10 @@ fun Connection.requireRole(eventId: UUID, userId: UUID): Role =
         Role.fromName(it.getString(1))
     }.firstOrNull() ?: notFound()
 
+/** The event a guest belongs to, or null for an account. */
+private fun Connection.guestEventOf(userId: UUID): UUID? =
+    query("select guest_event_id from app_user where id = ?", userId) { it.getObject(1, UUID::class.java) }.firstOrNull()
+
 fun Route.eventRoutes(db: Db, auth: Auth) {
     get(Routes.EVENTS) {
         val user = call.requireUser(auth)
@@ -47,6 +52,8 @@ fun Route.eventRoutes(db: Db, auth: Auth) {
 
     post(Routes.EVENTS) {
         val user = call.requireUser(auth)
+        // A guest lives only in one browser: an event they own could be lost with it.
+        if (db.tx { guestEventOf(user.userId) } != null) throw ApiError(HttpStatusCode.Forbidden, "GUEST_CANNOT_CREATE")
         val body = call.receive<CreateEventRequest>()
         val type = EventType.fromName(body.type) ?: invalid("type_unknown")
         // Same rules as the clients run before submitting.
@@ -92,12 +99,14 @@ fun Route.eventRoutes(db: Db, auth: Auth) {
         call.respond(dto)
     }
 
-    // Slice rule: anyone signed in who has the link can join. Invitations come later.
+    // Slice rule: any account that has the link can join. Invitations come later.
+    // A guest belongs to one event (see V3__guests.sql) and joins it when created.
     post(Routes.join("{eventId}")) {
         val user = call.requireUser(auth)
         val eventId = call.parameters["eventId"].toUuidOr404()
         db.tx {
             if (query("select 1 from event where id = ?", eventId) { 1 }.isEmpty()) notFound()
+            guestEventOf(user.userId)?.let { if (it != eventId) throw ApiError(HttpStatusCode.Forbidden, "GUEST_OF_OTHER_EVENT") }
             update(
                 "insert into event_member (event_id, user_id, role) values (?, ?, ?) on conflict do nothing",
                 eventId,

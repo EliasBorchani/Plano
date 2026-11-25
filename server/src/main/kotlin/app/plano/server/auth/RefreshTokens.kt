@@ -67,6 +67,15 @@ class RefreshTokens(
         }
     }
 
+    /** Who [raw] belongs to while it may still be used (not revoked, not expired). */
+    suspend fun userOf(raw: String): UUID? = db.tx {
+        query(
+            "select user_id from refresh_token where token_hash = ? and revoked_at is null and expires_at > ?",
+            hash(raw),
+            clock.instant().toOffset(),
+        ) { it.getObject(1, UUID::class.java) }.firstOrNull()
+    }
+
     /** Logout: the family's refresh tokens stop working; its access tokens expire on their own. */
     suspend fun revoke(raw: String) {
         db.tx {

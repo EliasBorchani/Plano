@@ -1,11 +1,13 @@
 package app.plano.server.auth
 
+import app.plano.contract.JoinAsGuestRequest
 import app.plano.contract.RefreshRequest
 import app.plano.contract.Routes
 import app.plano.contract.SignInRequest
 import app.plano.contract.TokenPairDto
 import app.plano.domain.auth.model.AuthProvider
 import app.plano.server.notFound
+import app.plano.server.toUuidOr404
 import app.plano.server.unauthorized
 import io.ktor.http.Cookie
 import io.ktor.http.HttpStatusCode
@@ -51,11 +53,33 @@ fun Route.authRoutes(auth: Auth) {
         val verifier = auth.verifiers[provider] ?: notFound()
         val body = call.receive<SignInRequest>()
         val identity = verifier.verify(body.idToken)
-        val user = auth.users.findOrCreate(provider, identity, body.displayName)
-        // A new sign-in on this browser ends the previous one.
-        call.request.cookies[REFRESH_COOKIE]?.let { auth.refreshTokens.revoke(it) }
-        call.setTokenCookies(auth, auth.refreshTokens.issue(user.id))
-        call.respond(user.toDto())
+        val previous = call.request.cookies[REFRESH_COOKIE]
+        // Signed in as a guest on this browser: the guest becomes (or joins) the account.
+        val guestId = previous?.let { auth.refreshTokens.userOf(it) }
+            ?.let { auth.users.find(it) }
+            ?.takeIf { it.isGuest }
+            ?.id
+        val user = auth.users.signIn(provider, identity, body.displayName, guestId)
+        call.signInAs(auth, user)
+    }
+
+    get(Routes.guestInvite("{eventId}")) {
+        val eventId = call.parameters["eventId"].toUuidOr404()
+        call.respond(auth.users.guestInvite(eventId))
+    }
+
+    post(Routes.guestInvite("{eventId}")) {
+        val eventId = call.parameters["eventId"].toUuidOr404()
+        val body = call.receive<JoinAsGuestRequest>()
+        call.signInAs(auth, auth.users.createGuest(eventId, body.displayName))
+    }
+
+    // No secret on purpose (owner, 2026-11-25): anyone with the event link may continue as one of its guests, so a
+    // guest who changes device finds their votes again. Guests are bound to one event, so this opens nothing else.
+    post(Routes.continueAsGuest("{eventId}", "{guestId}")) {
+        val eventId = call.parameters["eventId"].toUuidOr404()
+        val guestId = call.parameters["guestId"].toUuidOr404()
+        call.signInAs(auth, auth.users.guestOf(eventId, guestId))
     }
 
     post(Routes.REFRESH) {
@@ -93,6 +117,13 @@ fun Route.authRoutes(auth: Auth) {
         val user = auth.users.find(principal.userId) ?: unauthorized()
         call.respond(user.toDto())
     }
+}
+
+/** Ends this browser's previous session (if any) and starts one for [user]. */
+private suspend fun ApplicationCall.signInAs(auth: Auth, user: AuthUser) {
+    request.cookies[REFRESH_COOKIE]?.let { auth.refreshTokens.revoke(it) }
+    setTokenCookies(auth, auth.refreshTokens.issue(user.id))
+    respond(user.toDto())
 }
 
 /** Web calls send no body (the token is in a cookie); native apps send `{refreshToken}`. */

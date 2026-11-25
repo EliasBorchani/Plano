@@ -169,6 +169,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* People */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { padding: 6px 12px; border-radius: 999px; background: var(--surface-2); font-size: 14px; }
+.chip-button { min-height: 44px; border: 0; color: inherit; cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) {
   .meter span { transition: none; }

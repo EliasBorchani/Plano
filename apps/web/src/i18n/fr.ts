@@ -55,6 +55,10 @@ export const errors: Record<string, string> = {
   TITLE_MISSING: 'Donne un titre à ton événement.',
   TITLE_TOO_LONG: 'Le titre est trop long (80 caractères au plus).',
   DESCRIPTION_TOO_LONG: 'La description est trop longue.',
+  // GuestNameError
+  NAME_MISSING: 'Écris ton prénom.',
+  NAME_TOO_LONG: 'Ce nom est trop long (40 caractères au plus).',
+  NAME_TAKEN: 'Quelqu’un porte déjà ce nom ici. Si c’est toi, choisis « C’est moi » plus bas ; sinon ajoute une initiale.',
   // AddDateError
   DATE_INVALID: 'Choisis une date.',
   DATE_IN_PAST: 'Cette date est passée.',
@@ -103,5 +107,15 @@ export const t = {
   share: 'Partager le lien',
   copied: 'Lien copié',
   shareText: (title: string) => `On s'organise pour « ${title} » ici :`,
+  guestIntro: 'Ton prénom suffit pour voter. Pas besoin de compte.',
+  guestJoin: 'Participer',
+  guestAlreadyHere: 'Déjà venu sur un autre appareil ?',
+  itsMe: (name: string) => `C’est moi : ${name}`,
+  haveAccount: 'J’ai un compte Google ou Apple',
+  guestElsewhere: (name: string) => `Tu es invité ailleurs sous le nom ${name}. Rejoindre cet événement te déconnecte de l’autre (tu pourras y revenir avec « C’est moi »).`,
+  guestSignOutWarning:
+    'Tu n’as pas de compte : sur cet appareil, tes votes ne seront plus liés à toi. Tu pourras revenir avec « C’est moi » depuis le lien de l’événement. Se déconnecter ?',
+  keepVotesTitle: 'Garde tes votes',
+  keepVotesText: 'Connecte-toi pour retrouver cet événement sur tous tes appareils. Tes votes sont conservés.',
   votes: (n: number) => (n === 0 ? 'aucun vote' : n === 1 ? '1 vote' : `${n} votes`),
 }

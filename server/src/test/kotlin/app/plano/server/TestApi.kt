@@ -1,6 +1,10 @@
 package app.plano.server
 
+import app.plano.contract.AddDateOptionRequest
 import app.plano.contract.CreateEventRequest
+import app.plano.contract.DatePollDto
+import app.plano.contract.JoinAsGuestRequest
+import app.plano.contract.VoteRequest
 import app.plano.contract.CreatedDto
 import app.plano.contract.SignInRequest
 import app.plano.contract.UserDto
@@ -13,6 +17,8 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -86,3 +92,21 @@ suspend fun HttpClient.createEvent(title: String = "Dîner"): String =
         contentType(ContentType.Application.Json)
         setBody(CreateEventRequest(title = title, type = "DINNER"))
     }.body<CreatedDto>().id
+
+suspend fun HttpClient.joinAsGuest(eventId: String, name: String): HttpResponse =
+    post("/auth/guest/$eventId") {
+        contentType(ContentType.Application.Json)
+        setBody(JoinAsGuestRequest(name))
+    }
+
+suspend fun HttpClient.addDate(eventId: String, date: String): DatePollDto =
+    post("/events/$eventId/poll/options") {
+        contentType(ContentType.Application.Json)
+        setBody(AddDateOptionRequest(date))
+    }.body()
+
+suspend fun HttpClient.vote(eventId: String, optionId: String, choice: String?): HttpResponse =
+    put("/events/$eventId/poll/options/$optionId/vote") {
+        contentType(ContentType.Application.Json)
+        setBody(VoteRequest(choice))
+    }

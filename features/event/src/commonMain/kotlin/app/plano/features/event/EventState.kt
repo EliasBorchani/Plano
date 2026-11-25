@@ -44,6 +44,8 @@ data class EventState(
     /** Every `VoteChoice` name, in display order. */
     val choices: List<String> = emptyList(),
     val busy: Boolean = false,
+    /** A guest who voted: offer Google or Apple sign-in, which keeps their votes. */
+    val suggestAccount: Boolean = false,
     /** An `AppError.Kind` name or an `AddDateError` name. */
     val error: String? = null,
 )

@@ -10,6 +10,7 @@ import app.plano.features.events.create.CreateEventViewModel
 import app.plano.features.events.eventsFeatureModule
 import app.plano.features.events.list.EventListViewModel
 import app.plano.features.signin.SignInViewModel
+import app.plano.features.signin.guest.GuestEntryViewModel
 import app.plano.features.signin.signInFeatureModule
 import app.plano.utilities.network.NetworkConfig
 import app.plano.utilities.network.RefreshConfig
@@ -66,3 +67,7 @@ fun createEventController(): CreateEventController = CreateEventController(requi
 @JsExport
 fun eventController(eventId: String, joinOnOpen: Boolean): EventController =
     EventController(requireKoin().get<EventViewModel> { parametersOf(eventId, joinOnOpen) })
+
+@JsExport
+fun guestEntryController(eventId: String): GuestEntryController =
+    GuestEntryController(requireKoin().get<GuestEntryViewModel> { parametersOf(eventId) })

@@ -1,6 +1,7 @@
 package app.plano.features.event
 
 import app.plano.domain.auth.model.AuthProvider
+import app.plano.domain.auth.model.GuestInvite
 import app.plano.domain.auth.model.Session
 import app.plano.domain.auth.model.User
 import app.plano.domain.auth.repository.AuthRepository
@@ -18,24 +19,30 @@ import app.plano.domain.polls.model.VoteChoice
 import app.plano.domain.polls.repository.PollRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.datetime.LocalDate
 
 const val ME = "u-me"
 
-class FakeAuth : AuthRepository {
-    override val session: StateFlow<Session> = MutableStateFlow(Session.SignedIn(User(ME, "Me", null)))
+class FakeAuth(guest: Boolean = false) : AuthRepository {
+    override val session = MutableStateFlow<Session>(Session.SignedIn(User(ME, "Me", null, guestEventId = "e1".takeIf { guest })))
 
     override suspend fun restore() = Unit
 
     override suspend fun signIn(provider: AuthProvider, idToken: String, displayName: String?) = Unit
 
     override suspend fun signOut() = Unit
+
+    override suspend fun guestInvite(eventId: String): GuestInvite = error("not used")
+
+    override suspend fun joinAsGuest(eventId: String, displayName: String) = Unit
+
+    override suspend fun continueAsGuest(eventId: String, guestId: String) = Unit
 }
 
 class FakeEvents(role: Role = Role.OWNER) : EventRepository {
     var joined = false
+    var refreshes = 0
     private val event = MutableStateFlow<Event?>(null)
     private val loaded = Event("e1", "Dîner", EventType.DINNER, null, role, listOf(Member(ME, "Me", role)))
 
@@ -48,6 +55,7 @@ class FakeEvents(role: Role = Role.OWNER) : EventRepository {
     override fun observe(eventId: String): Flow<Event?> = event
 
     override suspend fun refresh(eventId: String) {
+        refreshes++
         event.value = loaded
     }
 

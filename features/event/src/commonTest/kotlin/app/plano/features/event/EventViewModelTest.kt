@@ -1,5 +1,7 @@
 package app.plano.features.event
 
+import app.plano.domain.auth.model.Session
+import app.plano.domain.auth.model.User
 import app.plano.domain.events.model.Role
 import app.plano.domain.polls.model.VoteChoice
 import kotlinx.coroutines.Dispatchers
@@ -27,8 +29,39 @@ class EventViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel(joinOnOpen: Boolean = false, events: FakeEvents = FakeEvents(), polls: FakePolls = FakePolls()) =
-        EventViewModel("e1", joinOnOpen, events, polls, FakeAuth(), today)
+    private fun viewModel(
+        joinOnOpen: Boolean = false,
+        events: FakeEvents = FakeEvents(),
+        polls: FakePolls = FakePolls(),
+        auth: FakeAuth = FakeAuth(),
+    ) = EventViewModel("e1", joinOnOpen, events, polls, auth, today)
+
+    @Test
+    fun aGuestWhoVotedIsOfferedAnAccount() = runTest {
+        val auth = FakeAuth(guest = true)
+        val vm = viewModel(auth = auth)
+        vm.onIntent(EventIntent.SetNewDate("2026-12-05"))
+        vm.onIntent(EventIntent.AddDate)
+        assertFalse(vm.state.value.suggestAccount)
+
+        vm.onIntent(EventIntent.Vote(vm.state.value.options.single().id, VoteChoice.PREFER))
+        assertTrue(vm.state.value.suggestAccount)
+
+        auth.session.value = Session.SignedIn(User(ME, "Me", "me@example.com"))
+        assertFalse(vm.state.value.suggestAccount)
+    }
+
+    @Test
+    fun reloadsWhenTheUserChanges() = runTest {
+        val auth = FakeAuth(guest = true)
+        val events = FakeEvents()
+        viewModel(events = events, auth = auth)
+        assertEquals(1, events.refreshes)
+
+        // Merged into an existing account: same person, another id.
+        auth.session.value = Session.SignedIn(User("u-account", "Me", "me@example.com"))
+        assertEquals(2, events.refreshes)
+    }
 
     @Test
     fun loadsEventAndJoinsWhenOpenedFromALink() = runTest {

@@ -1,17 +1,22 @@
 import { Link } from 'react-router'
 import { errorText, eventTypes, roles, t } from '../i18n/fr'
-import { arr, eventListController, useController } from '../shared'
+import { useSession } from '../session'
+import { arr, eventListController, useController, useControllerState } from '../shared'
 
 export function EventListScreen() {
   const [state, controller] = useController(() => eventListController(), [])
+  // Guests cannot create events (the server refuses): an event they own could be lost with their browser.
+  const isGuest = useControllerState(useSession()).user?.isGuest === true
 
   return (
     <main className="page stack">
       <div className="row between">
         <h1>{t.myEvents}</h1>
-        <Link to="/new" className="button">
-          {t.newEvent}
-        </Link>
+        {!isGuest && (
+          <Link to="/new" className="button">
+            {t.newEvent}
+          </Link>
+        )}
       </div>
 
       {!state || state.loading ? (

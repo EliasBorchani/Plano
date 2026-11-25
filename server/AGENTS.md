@@ -25,6 +25,15 @@ with the shared Kotlin code (`contract`, `domain/*/api`) the clients run.
 - `POST /auth/refresh` rotates the token inside its family (one sign-in on one device). A replaced token sent again
   within 30 s gets 401 and nothing else (two tabs refreshing at once); later, it revokes the whole family (theft).
   `POST /auth/logout` revokes the family; its access tokens still work until they expire. `GET /me`.
+- **Guests** (`Users`, `V3__guests.sql`): an `app_user` with no `auth_identity` and a `guest_event_id`, bound to
+  that one event. Public routes (no session): `GET auth/guest/{eventId}` (title, type, guests), `POST
+  auth/guest/{eventId} {displayName}` (new guest, checked with the shared `GuestName`; a name already used by a member
+  of the event → 409 `NAME_TAKEN`), `POST auth/guest/{eventId}/as/{guestId}` (« C'est moi »: no secret on purpose,
+  owner 2026-11-25, so a guest can come back from another device; bound to one event, so it opens nothing else).
+  A guest may not create events (403 `GUEST_CANNOT_CREATE`) nor join another one (403 `GUEST_OF_OTHER_EVENT`).
+- Google or Apple sign-in while the browser holds a guest's refresh cookie: a new identity turns the guest into an
+  account (same id, keeps the guest's name); a known identity merges the guest into that account (membership, votes,
+  added dates; **the account's vote wins** on a date both voted on, owner's rule) and deletes the guest.
 - Providers come from the environment (`Main.kt`, `verifiersFor`): Google when `GOOGLE_CLIENT_ID` is set; Apple when
   `APPLE_SERVICES_ID` is set, else `DevAppleVerifier` (accepts `dev:<name>`) only when `APP_ENV=dev`.
 - Events (`events/`): `GET /events`, `POST /events` (validated with the shared `NewEvent.validate()`; creates the

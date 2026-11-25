@@ -26,7 +26,9 @@ class SignInViewModel(
                 Session.SignedOut -> SessionStatus.SIGNED_OUT
                 is Session.SignedIn -> SessionStatus.SIGNED_IN
             },
-            user = (session as? Session.SignedIn)?.user?.let { UserUi(id = it.id, displayName = it.displayName) },
+            user = (session as? Session.SignedIn)?.user?.let {
+                UserUi(id = it.id, displayName = it.displayName, isGuest = it.isGuest, guestEventId = it.guestEventId)
+            },
             busy = busy,
             error = error,
         )

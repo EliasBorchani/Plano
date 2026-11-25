@@ -16,7 +16,7 @@ Docs tools). It is the source of truth for product decisions; when it and this r
 | `domain/<ctx>/{api,data}` | Bounded contexts `auth`, `events`, `polls`: models, rules and repository contracts in `api`, Ktor implementations in `data` | `docs/architecture.md` |
 | `features/<name>` | View models (MVI) and their exported UI state: `signin`, `events`, `event` | `docs/architecture.md` |
 | `bridge-web/` | The web umbrella: one ES module `plano-shared` with TypeScript types, consumed by `apps/web` | `docs/kmp-js-friction.md` |
-| `server/` | Ktor backend: sign-in, access and refresh tokens, events, date poll | `server/AGENTS.md` |
+| `server/` | Ktor backend: sign-in, guests, access and refresh tokens, events, date poll | `server/AGENTS.md` |
 | `apps/web/` | React web app (mobile-first, French) | `apps/web/AGENTS.md` |
 | `apps/android/`, `apps/ios/` | later (mobile milestone), consuming the same `features/*` | |
 | `build-logic/` | Convention plugins `plano.kmp.library` (JVM + JS targets) and `plano.kmp.feature` | |
@@ -38,7 +38,9 @@ for the UI only. Status and open points: `docs/status.md`. The owner reviews the
   combines events and polls).
 - **MVI state is reactive** (`combine(...).stateIn(...)`), as in Tummy. Use cases only when they hold logic.
 - **Koin DSL only, no annotations.** Versions only in `gradle/libs.versions.toml`.
-- **Visibility comes from event membership only**: a non-member gets 404 on every event route.
+- **Visibility comes from event membership only**: a non-member gets 404 on every event route. The one public
+  view is the guest invite (`auth/guest/{eventId}`: title, type, guest names) for whoever holds the link.
+- **A guest belongs to exactly one event** (owner, 2026-11-25), so « C'est moi » never opens another event.
 
 ## Before saying something works
 

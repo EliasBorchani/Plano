@@ -14,6 +14,9 @@ import app.plano.features.events.list.EventListViewModel
 import app.plano.features.signin.SignInIntent
 import app.plano.features.signin.SignInState
 import app.plano.features.signin.SignInViewModel
+import app.plano.features.signin.guest.GuestEntryIntent
+import app.plano.features.signin.guest.GuestEntryState
+import app.plano.features.signin.guest.GuestEntryViewModel
 
 @JsExport
 class SessionController internal constructor(
@@ -62,4 +65,17 @@ class EventController internal constructor(
     fun vote(optionId: String, choice: String) {
         VoteChoice.fromName(choice)?.let { vm.onIntent(EventIntent.Vote(optionId, it)) }
     }
+}
+
+@JsExport
+class GuestEntryController internal constructor(
+    private val vm: GuestEntryViewModel,
+) : Controller<GuestEntryState>(vm) {
+    fun setName(value: String) = vm.onIntent(GuestEntryIntent.SetName(value))
+
+    fun join() = vm.onIntent(GuestEntryIntent.Join)
+
+    fun continueAs(guestId: String) = vm.onIntent(GuestEntryIntent.ContinueAs(guestId))
+
+    fun retry() = vm.onIntent(GuestEntryIntent.Retry)
 }

@@ -3,19 +3,31 @@
 For a new session: read `AGENTS.md` (root) first, then the `AGENTS.md` of the folder you work in. This file holds
 what they do not: where the project stands, decisions taken along the way, known limits and next steps.
 
-## Where we are (2026-11-06)
+## Where we are (2026-11-25)
 
-PRD step 1, the KMP-to-JS slice: committed and pushed (`main`). Since then, **access and refresh tokens**
-(not reviewed or committed yet), asked by the owner before guest voting.
+PRD step 1, the KMP-to-JS slice, then access and refresh tokens: committed and pushed (`main`). Now **guest
+voting**: a name is enough to take part (PRD decision).
 
-- Server: `AccessTokens` (15 min JWT), `RefreshTokens` (rotation, 30 s grace, reuse revokes the family), tested
-  with a fake clock in `TokenTest` (10). Details in `server/AGENTS.md`.
-- Client: `utilities/network/TokenRefresh.kt` refreshes on a 401 and retries once; parallel 401s share one
-  refresh; a failed refresh calls `SessionEvents.onExpired`, and `HttpAuthRepository` goes `SignedOut`.
-  Tests: `TokenRefreshTest` (5), `HttpAuthRepositoryTest` (1), on JVM and Node.
-- Checked in Chrome with `ACCESS_TTL=20s`: after 25 s, adding a date gave 401 → refresh 204 → retry 200; after
-  revoking the refresh tokens in the database, a vote gave 401 → refresh 401 → back to the sign-in screen.
-- Bundle: Kotlin cost 285 KB gzip (283 before).
+- A guest is an `app_user` with no `auth_identity`, **bound to one event** (`guest_event_id`, owner's choice), with
+  the same tokens as an account. Same rights as members (friend-group default role: planner), but cannot create
+  events. Names are unique per event (shared rule `GuestName`, case and spaces ignored).
+- The event link, without a session for that event, shows the guest entry: type a name, or « C'est moi » on an
+  existing guest (owner: lets a guest come back from another device; no secret, so anyone with the link can do it),
+  or « J'ai un compte ». A guest of event A opening event B's link gets B's guest entry; joining B ends the A
+  session on this browser (A stays reachable through « C'est moi »).
+- After a guest's first vote, the event page offers Google or Apple sign-in (« Garde tes votes »). A new identity
+  turns the guest into an account (same id, keeps the name); a known one merges the guest into it, and **the
+  account's vote wins** where both voted on the same date (owner).
+- Signing out as a guest asks for confirmation first (owner). Guest sessions keep the 30-day refresh (owner).
+- Tests: server `GuestTest` (6); `GuestEntryViewModelTest` (4) and 2 new `EventViewModelTest` cases, JVM and Node.
+- Checked in headless Chromium (390 px): Alice creates an event; « Bob » joins as a guest (« alice » refused as
+  taken), votes, sees the prompt, has no « Nouvel événement »; a second browser continues as Bob and sees his vote;
+  Bob signs in (dev Apple) and keeps his name and vote, can now create; a guest's sign-out shows the warning and
+  returns to the guest entry. Only expected 401/409 in the console. Once out of ten runs the script read Bob's vote
+  as not selected right after signing in; not reproduced in the nine runs after.
+
+Tokens (previous step): `AccessTokens` (15 min JWT), `RefreshTokens` (rotation, 30 s grace, reuse revokes the
+family), client refresh on a 401 (`utilities/network/TokenRefresh.kt`). Details in `server/AGENTS.md`.
 
 Step 1 itself:
 
@@ -49,8 +61,8 @@ Step 1 itself:
 - **"Only if it is the majority" (owner, 2026-11-06)**: the poll shows two leaders, the date with the most « Oui »
   and the date with the most « Oui » + « Si majorité ». Each tie goes to fewer « Non », then to the earlier date.
   One badge when both agree. Code: `domain/polls/api/.../PollTally.kt`.
-- Joining: in the slice, anyone signed in who opens `/e/<id>` joins as planner (friend-group default). Invitations,
-  groups and guests (vote with a name only) come with the data model step.
+- Joining: an account that opens `/e/<id>` joins as planner (friend-group default); without an account, as a guest.
+  Invitations and groups come with the data model step.
 - Sessions: short access token + rotating refresh token, both in httpOnly cookies on the web (owner, 2026-11-06,
   replaces the single 30-day session token). Same origin (`/api` proxy in dev, `PUBLIC_API_PATH` for the cookie
   path). Logout cannot cancel an access token: it stays valid up to 15 min (accepted by the owner,
@@ -67,14 +79,13 @@ Step 1 itself:
 
 - Repository caches are in memory and not cleared on sign-out (each screen refreshes when it opens).
 - No realtime: another person's vote shows after a reload or one's own next action.
-- No deadline, validation of the winning date, RSVP, notifications, place poll, guests, groups.
+- No deadline, validation of the winning date, RSVP, notifications, place poll, groups.
+- Guests: anyone can create many guests on a link they hold (no rate limit). Native apps cannot merge a guest at
+  sign-in yet (the server reads the guest from the web refresh cookie only).
 - No lint or formatting tool wired yet (Tummy uses Spotless with ktlint).
 
 ## Next steps
 
-1. Owner review of the token change; then a commit.
-2. Guest voting with a name only (PRD decision): a guest is an `app_user` without `auth_identity`, with the same
-   tokens; Google/Apple sign-in after the first vote merges the guest into the account. The dev Apple stand-in is
-   not it; it is off in production.
+1. Owner review of guest voting (committed and pushed, the owner allowed it on 2026-11-25).
+2. PRD step 3, the link library in shared Kotlin (a new context in `domain/`).
 3. Google client ID: the owner wants to be guided through it when it matters (first deployment).
-4. PRD step 3, the link library in shared Kotlin (a new context in `domain/`).
