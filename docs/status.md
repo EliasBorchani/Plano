@@ -5,8 +5,24 @@ what they do not: where the project stands, decisions taken along the way, known
 
 ## Where we are (2026-11-25)
 
-**PRD step 3, the link library**, done (after guest voting, below). No UI yet: link options arrive with the place
-poll.
+**PRD step 4, the place search prototype**, done on the server (no UI yet, it comes with the place poll).
+
+- Real Nominatim answers around the owner's three links (2026-11-25): « Pathé Île Seguin » finds nothing by its
+  full name (OpenStreetMap calls it « Pathé », 57 m away); « CrossFit Le Trapèze » is found (15 m); « 4PADEL » is
+  not in OpenStreetMap. Hence the rule in `domain/places/api` (`PlaceMatching`, JVM + JS): search the full name in
+  a box around the link's position, then its first meaningful word; keep a result within 300 m whose words match
+  (same words, or one name's words all in the other, or half the words in common), never an area (« Île Seguin »);
+  nearest wins a tie. No match → the place is made from the link.
+- Server: `place` table, `Nominatim` client (1 request/s, 24 h cache), routes `places/search`, `places`,
+  `places/from-link` (`server/AGENTS.md`).
+- Tests: `PlaceMatchingTest` (6, on the real candidates), server `PlaceTest` (7) against a fake Nominatim.
+- **Not checked end to end against the real Nominatim**: Docker Desktop disappeared from `/Applications` during the
+  session, so no Postgres to run the server. The matching rule was checked on the real answers (above), the
+  server path only against the fake.
+
+## Link library (2026-11-25)
+
+PRD step 3. No UI yet: link options arrive with the place poll.
 
 - `domain/links/api` (JVM + JS): `Links.card(text)` finds the link in pasted text (share text works), strips
   tracking parameters (`utm_*`, `fbclid`, Google's `entry`, `g_ep`, `skid`…), sorts the query (canonical address:
@@ -109,6 +125,7 @@ Step 1 itself:
 
 1. Owner review of guest voting and the link library (committed and pushed, the owner allowed it on 2026-11-25).
 2. A real `maps.app.goo.gl` short link from the owner, to check resolution end to end.
-3. PRD step 4, place search prototype: public Nominatim on submit (1 request/s, identifying User-Agent), places
-   stored with the OSM id and a copy of name, address, coordinates; match a Google link by name near its position.
+3. Docker back on this machine, then the real-Nominatim check of `places/from-link` with the three sample links.
+4. PRD step 5, the data model: guests and accounts (done), groups, invitations, RSVP, polls with place or link
+   options, notification schedules.
 4. Google client ID: the owner wants to be guided through it when it matters (first deployment).

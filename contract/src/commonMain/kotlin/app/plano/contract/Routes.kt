@@ -10,6 +10,9 @@ object Routes {
     const val AUTH_PREFIX = "auth/"
     const val EVENTS = "events"
     const val LINK_PREVIEW = "links/preview"
+    const val PLACES = "places"
+    const val PLACE_SEARCH = "places/search"
+    const val PLACE_FROM_LINK = "places/from-link"
 
     fun signIn(provider: String) = "auth/$provider"
 

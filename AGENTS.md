@@ -13,10 +13,10 @@ Docs tools). It is the source of truth for product decisions; when it and this r
 | --- | --- | --- |
 | `utilities/` | `kotlin-ext` (`AppError`), `network` (Ktor client factory), `presentation` (`BaseViewModel`) | `docs/architecture.md` |
 | `contract/` | Wire DTOs and route paths, shared by the client `:data` modules and the server | `docs/architecture.md` |
-| `domain/<ctx>/{api,data}` | Bounded contexts `auth`, `events`, `polls`, `links` (rules only for now): models, rules and repository contracts in `api`, Ktor implementations in `data` | `docs/architecture.md` |
+| `domain/<ctx>/{api,data}` | Bounded contexts `auth`, `events`, `polls`, `links`, `places` (rules only for now): models, rules and repository contracts in `api`, Ktor implementations in `data` | `docs/architecture.md` |
 | `features/<name>` | View models (MVI) and their exported UI state: `signin`, `events`, `event` | `docs/architecture.md` |
 | `bridge-web/` | The web umbrella: one ES module `plano-shared` with TypeScript types, consumed by `apps/web` | `docs/kmp-js-friction.md` |
-| `server/` | Ktor backend: sign-in, guests, access and refresh tokens, events, date poll, link previews | `server/AGENTS.md` |
+| `server/` | Ktor backend: sign-in, guests, access and refresh tokens, events, date poll, link previews, places (Nominatim) | `server/AGENTS.md` |
 | `apps/web/` | React web app (mobile-first, French) | `apps/web/AGENTS.md` |
 | `apps/android/`, `apps/ios/` | later (mobile milestone), consuming the same `features/*` | |
 | `build-logic/` | Convention plugins `plano.kmp.library` (JVM + JS targets) and `plano.kmp.feature` | |

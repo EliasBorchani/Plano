@@ -19,6 +19,7 @@ dependencies {
     implementation(projects.domain.events.api)
     implementation(projects.domain.polls.api)
     implementation(projects.domain.links.api)
+    implementation(projects.domain.places.api)
 
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)

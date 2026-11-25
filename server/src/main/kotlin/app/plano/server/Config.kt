@@ -19,6 +19,8 @@ data class Config(
     val refreshTtl: Duration,
     /** The path under which browsers reach this server (the web proxy serves it at `/api`). */
     val publicApiPath: String,
+    /** Public Nominatim by default; a self-hosted one later (PRD). */
+    val nominatimUrl: String,
 ) {
     val isDev: Boolean get() = appEnv == "dev"
 
@@ -40,6 +42,7 @@ data class Config(
                 accessTtl = value("ACCESS_TTL")?.let(::parseDuration) ?: Duration.ofMinutes(15),
                 refreshTtl = value("REFRESH_TTL")?.let(::parseDuration) ?: Duration.ofDays(30),
                 publicApiPath = value("PUBLIC_API_PATH") ?: "/api",
+                nominatimUrl = value("NOMINATIM_URL") ?: "https://nominatim.openstreetmap.org/",
             )
         }
     }

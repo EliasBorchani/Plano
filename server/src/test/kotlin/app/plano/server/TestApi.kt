@@ -13,6 +13,7 @@ import app.plano.server.auth.DevAppleVerifier
 import app.plano.server.auth.IdTokenVerifier
 import app.plano.server.auth.VerifiedIdentity
 import app.plano.server.links.SafeFetcher
+import app.plano.server.places.Nominatim
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -56,6 +57,7 @@ val TEST_JWT_SECRET = "test-secret-that-is-at-least-32-bytes-long".toByteArray()
 fun api(
     clock: Clock = Clock.systemUTC(),
     linkFetcher: SafeFetcher = SafeFetcher(),
+    nominatim: Nominatim = Nominatim("http://127.0.0.1:9/"),
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = TestDatabase().use { database ->
     testApplication {
@@ -69,6 +71,7 @@ fun api(
                     publicApiPath = "",
                     clock = clock,
                     linkFetcher = linkFetcher,
+                    nominatim = nominatim,
                 ),
             )
         }

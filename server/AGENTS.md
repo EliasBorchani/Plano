@@ -47,6 +47,15 @@ with the shared Kotlin code (`contract`, `domain/*/api`) the clients run.
   Google hosts only, up to 5, never loading a page, until a Google Maps long link appears (EU consent page unwrapped
   by `Links.clean`). Other links with a guessed title: the page's `og:title`/`<title>` and description (jsoup).
   **Never fetch a Google page** (content may not be stored).
+- Places (`places/`, `V4__places.sql`): `GET places/search?q=` (OpenStreetMap results, not stored), `POST places
+  {osmRef}` (stores the picked one: from our recent search, else one `/lookup`), `POST places/from-link {text}`
+  (a Google Maps link: its name searched in a ~550 m box around its position, then its first meaningful word,
+  best match by the shared `PlaceMatching`; no match → a `LINK` place from the link's name and position, one per
+  canonical link). A place is stored once (`osm_ref` or `link_url` unique) with a copy of name, address, position.
+- `Nominatim`: the public server (`NOMINATIM_URL` to change it), one request per second for the whole server
+  (queued, `503 SEARCH_UNAVAILABLE` after 8 s or on any failure), results cached 24 h in memory, User-Agent
+  `Plano/0.1 (+https://github.com/EliasBorchani/Plano)` (owner, 2026-11-25). OSM places must be shown with
+  « © OpenStreetMap contributors » (UI, later).
 - `SafeFetcher`: http(s) on ports 80/443, every address checked by `AddressPolicy` (no loopback, private,
   link-local, CGNAT, multicast, ULA) through OkHttp's `Dns`, so the connection uses exactly the checked addresses;
   literal IPs checked before the call; 5 s timeout, 512 KB read, 5 redirects, each hop checked. Generic

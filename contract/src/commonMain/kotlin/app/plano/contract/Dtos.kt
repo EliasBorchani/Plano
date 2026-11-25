@@ -151,3 +151,39 @@ data class LinkCardDto(
     /** Still a short link: following it failed, the user should paste the long link or search by name. */
     val needsResolution: Boolean,
 )
+
+/** A geocoder result: not stored until someone picks it. */
+@Serializable
+data class PlaceCandidateDto(
+    val osmRef: String,
+    val name: String,
+    val address: String? = null,
+    val latitude: Double,
+    val longitude: Double,
+    val category: String? = null,
+)
+
+@Serializable
+data class PickPlaceRequest(
+    val osmRef: String,
+)
+
+@Serializable
+data class FromLinkRequest(
+    /** A pasted maps link, or share text with one in it. */
+    val text: String,
+)
+
+@Serializable
+data class PlaceDto(
+    val id: String,
+    /** `PlaceSource` name: `OSM` places are shown with « © OpenStreetMap contributors ». */
+    val source: String,
+    val name: String,
+    val address: String? = null,
+    val latitude: Double,
+    val longitude: Double,
+    val osmRef: String? = null,
+    val linkUrl: String? = null,
+    val googleMapsUrl: String,
+)

@@ -13,6 +13,9 @@ import app.plano.server.events.eventRoutes
 import app.plano.server.links.LinkPreviewer
 import app.plano.server.links.SafeFetcher
 import app.plano.server.links.linkRoutes
+import app.plano.server.places.Nominatim
+import app.plano.server.places.Places
+import app.plano.server.places.placeRoutes
 import app.plano.server.polls.pollRoutes
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -40,8 +43,10 @@ class Deps(
     publicApiPath: String = "/api",
     clock: Clock = Clock.systemUTC(),
     linkFetcher: SafeFetcher = SafeFetcher(),
+    nominatim: Nominatim = Nominatim(),
 ) {
     val links = LinkPreviewer(linkFetcher)
+    val places = Places(db, nominatim, links)
 
     val auth = Auth(
         users = Users(db),
@@ -72,6 +77,7 @@ fun Application.plano(deps: Deps) {
         eventRoutes(deps.db, deps.auth)
         pollRoutes(deps.db, deps.auth)
         linkRoutes(deps.auth, deps.links)
+        placeRoutes(deps.auth, deps.places)
     }
 }
 
@@ -91,6 +97,7 @@ fun main() {
         accessTtl = config.accessTtl,
         refreshTtl = config.refreshTtl,
         publicApiPath = config.publicApiPath,
+        nominatim = Nominatim(config.nominatimUrl),
     )
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") { plano(deps) }.start(wait = true)
 }
